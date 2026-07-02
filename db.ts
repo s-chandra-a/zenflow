@@ -12,7 +12,7 @@ const TaskSchema = new Schema({
   description: { type: String, default: "" },
   duration: { type: Number, default: 30 },
   priority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
-  period: { type: String, enum: ["today", "tomorrow", "yesterday"], default: "today" },
+  period: { type: String, enum: ["today", "tomorrow", "yesterday", "overflow"], default: "today" },
   category: { type: String, default: "work" },
   timeOfDay: { type: String, default: "Morning" },
   completed: { type: Boolean, default: false },
@@ -27,7 +27,8 @@ const HabitSchema = new Schema({
   duration: { type: Number, default: 15 },
   category: { type: String, default: "health" },
   enabled: { type: Boolean, default: true },
-  lastCompletedDate: { type: String }
+  lastCompletedDate: { type: String },
+  streak: { type: Number, default: 0 }
 }, { timestamps: true });
 
 let TaskModel: mongoose.Model<any>;
@@ -208,7 +209,9 @@ export async function syncHabits(habits: any[]): Promise<void> {
     time: h.time || "08:00",
     duration: typeof h.duration === "number" ? h.duration : 15,
     category: h.category || "health",
-    enabled: !!h.enabled
+    enabled: !!h.enabled,
+    lastCompletedDate: h.lastCompletedDate,
+    streak: typeof h.streak === "number" ? h.streak : 0
   }));
 
   if (isMongoConnected) {

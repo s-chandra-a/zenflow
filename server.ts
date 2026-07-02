@@ -367,7 +367,7 @@ Return only a valid JSON matching this schema. No explanation or markdown tags.`
 // API Endpoint to analyze and auto-prioritize tasks based on context
 app.post("/api/ai-scheduler", async (req, res) => {
   try {
-    const { tasks, habits, options, model, bypassAI } = req.body;
+    const { tasks, habits, currentTime, period, options, model, bypassAI } = req.body;
     if (!tasks || !Array.isArray(tasks)) {
       return res.status(400).json({ error: "Tasks array is required to schedule" });
     }
@@ -385,8 +385,18 @@ app.post("/api/ai-scheduler", async (req, res) => {
         throw new Error("AI bypassed: quota limit exceeded");
       }
       const ai = getAI();
+      const scheduleStartTime = period === "tomorrow" ? "08:00" : (currentTime || "08:00");
+      const targetDayText = period === "tomorrow" ? "tomorrow" : "today";
+      const overflowGuideline = period === "tomorrow"
+        ? `3. NO OVERFLOW DISPLACEMENT (CRITICAL):
+   - You MUST schedule ALL tasks regardless of whether they extend past 11:00 PM. Do NOT set any task's period to "overflow". Keep their period as "tomorrow" and assign them valid times.`
+        : `3. OVERFLOW & TIMELINE CONSTRAINT:
+   - Try to fit all tasks in today's timeline (between the starting time of ${scheduleStartTime} and 11:00 PM).
+   - If the task durations and required gaps overflow the remaining time today (meaning they extend past 11:00 PM), you MUST NOT schedule them on the timeline. Instead, flag them by setting "period": "overflow" and leaving "scheduledTime": null (or blank).
+   - For tasks that fit in today's timeline, set "period": "today".`;
+
       const prompt = `You are an elite productivity planner and calendar scheduling engine.
-Your goal is to schedule the user's tasks for the day starting from 8:00 AM (08:00) and finishing by 11:00 PM (23:00).
+Your goal is to schedule the user's tasks starting from ${scheduleStartTime} and finishing by 11:00 PM (23:00) ${targetDayText}.
 
 Input Tasks to schedule:
 ${JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description || "", duration: t.duration, priority: t.priority, category: t.category || "work" })), null, 2)}
@@ -403,15 +413,16 @@ Scheduling Guidelines:
    - No dummy break tasks: Do NOT output any "Break & stretch" or dummy filler tasks. Just leave those slots empty on the calendar by adjusting the tasks' "scheduledTime" values.
    - Mix categories: ${mixCategories ? "YES. Try to alternate tasks between different categories (e.g., mix work, personal, study, health) rather than grouping all tasks of the same category together." : "NO. You can group similar category tasks together."}
    - User custom context: ${context || "None provided."}
-3. CALENDAR CONSTRAINTS:
-   - Assign each task a valid 'scheduledTime' in 24-hour format "HH:MM" (e.g. "09:30", "14:15", "18:00").
+${overflowGuideline}
+4. CALENDAR CONSTRAINTS:
+   - Assign each successfully scheduled task a valid 'scheduledTime' in 24-hour format "HH:MM" (e.g. "09:30", "14:15", "18:00").
    - Reschedule tasks to make the day productive. Adjust their priorities ('high', 'medium', 'low') based on their urgency.
 
 Return a JSON object containing a "scheduledTasks" array and an empty "newBreaks" array.
 Return ONLY a valid JSON object matching this structure:
 {
   "scheduledTasks": [
-    { "id": "...", "scheduledTime": "HH:MM", "priority": "high|medium|low" },
+    { "id": "...", "scheduledTime": "HH:MM|null", "priority": "high|medium|low", "period": "${period === 'tomorrow' ? 'tomorrow' : 'today|overflow'}" },
     ...
   ],
   "newBreaks": []

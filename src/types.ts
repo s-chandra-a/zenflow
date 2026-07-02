@@ -4,7 +4,7 @@ export interface Task {
   description: string;
   duration: number; // in minutes
   priority: 'low' | 'medium' | 'high';
-  period: 'today' | 'tomorrow' | 'yesterday';
+  period: 'today' | 'tomorrow' | 'yesterday' | 'overflow';
   category: string;
   timeOfDay: string; // e.g., "10:00 AM", "Afternoon"
   completed: boolean;
@@ -51,4 +51,5 @@ export interface Habit {
   category: string;
   enabled: boolean;
   lastCompletedDate?: string; // YYYY-MM-DD format
+  streak: number;
 }

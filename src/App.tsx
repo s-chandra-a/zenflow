@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, Upload, Calendar, List, Sparkles, Plus, Clock, 
   Settings, CheckCircle, CheckCircle2, ChevronRight, Play, Loader2, AlertCircle, X,
-  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette
+  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Task, InAppNotification, Habit } from "./types";
@@ -227,6 +227,33 @@ export default function App() {
         // Filter out legacy dummy tasks and habits if any exist
         serverTasks = serverTasks.filter(t => !["task-1", "task-2", "task-3", "task-4"].includes(t.id));
         serverHabits = serverHabits.filter(h => !["habit-1", "habit-2", "habit-3"].includes(h.id));
+
+        // Self-healing streak logic: reset streak to 0 if lastCompletedDate was before yesterday's Habit Day (adjusted for 8 AM reset)
+        const getHabitDay = (d: Date) => {
+          const adj = new Date(d.getTime());
+          if (adj.getHours() < 8) {
+            adj.setDate(adj.getDate() - 1);
+          }
+          return adj.toISOString().split("T")[0];
+        };
+
+        const now = new Date();
+        const habitTodayStr = getHabitDay(now);
+
+        const yesterday = new Date(now.getTime());
+        if (yesterday.getHours() < 8) {
+          yesterday.setDate(yesterday.getDate() - 1);
+        }
+        yesterday.setDate(yesterday.getDate() - 1);
+        const habitYesterdayStr = yesterday.toISOString().split("T")[0];
+        
+        serverHabits = serverHabits.map((h) => {
+          const currentStreak = h.streak ?? 0;
+          if (h.lastCompletedDate && h.lastCompletedDate !== habitTodayStr && h.lastCompletedDate !== habitYesterdayStr) {
+            return { ...h, streak: 0 };
+          }
+          return { ...h, streak: currentStreak };
+        });
 
         setTasks(serverTasks);
         setHabits(serverHabits);
@@ -456,6 +483,7 @@ export default function App() {
         duration: habitFormDuration,
         category: habitFormCategory,
         enabled: habitFormEnabled,
+        streak: 0,
       };
       setHabits((prev) => [newHabit, ...prev]);
       triggerNotification("Habit Created", `"${habitFormTitle}" added to habits tracker.`, "success");
@@ -504,24 +532,88 @@ export default function App() {
   };
 
   const handleToggleHabitCompleted = (id: string) => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const getHabitDay = (d: Date) => {
+      const adj = new Date(d.getTime());
+      if (adj.getHours() < 8) {
+        adj.setDate(adj.getDate() - 1);
+      }
+      return adj.toISOString().split("T")[0];
+    };
+
+    const now = new Date();
+    const habitTodayStr = getHabitDay(now);
+
+    const yesterday = new Date(now.getTime());
+    if (yesterday.getHours() < 8) {
+      yesterday.setDate(yesterday.getDate() - 1);
+    }
+    yesterday.setDate(yesterday.getDate() - 1);
+    const habitYesterdayStr = yesterday.toISOString().split("T")[0];
+
     setHabits((prev) =>
       prev.map((h) => {
         if (h.id === id) {
-          const isCompleted = h.lastCompletedDate === todayStr;
-          const nextDate = isCompleted ? "" : todayStr;
-          if (!isCompleted) {
+          const isCompleted = h.lastCompletedDate === habitTodayStr;
+          let nextDate = "";
+          let nextStreak = h.streak ?? 0;
+
+          if (isCompleted) {
+            // Unchecking
+            nextDate = "";
+            nextStreak = Math.max(0, nextStreak - 1);
+          } else {
+            // Checking
+            nextDate = habitTodayStr;
+            if (h.lastCompletedDate === habitYesterdayStr) {
+              nextStreak = nextStreak + 1;
+            } else {
+              nextStreak = 1;
+            }
             triggerNotification(
               "Habit Completed Today",
-              `Splendid! You checked off "${h.title}" for today.`,
+              `Splendid! You checked off "${h.title}" for today. Streak: ${nextStreak} days!`,
               "success"
             );
           }
-          return { ...h, lastCompletedDate: nextDate };
+          return { ...h, lastCompletedDate: nextDate, streak: nextStreak };
         }
         return h;
       })
     );
+  };
+
+  const handleJamInToday = (taskId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          // Set to today and force timing to 22:00
+          return {
+            ...t,
+            period: "today",
+            scheduledTime: "22:00"
+          };
+        }
+        return t;
+      })
+    );
+    triggerNotification("Task Jammed Today", "Task successfully forced onto today's timeline at 22:00.", "success");
+  };
+
+  const handleMigrateToTomorrow = (taskId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          // Move to tomorrow and clear scheduledTime
+          return {
+            ...t,
+            period: "tomorrow",
+            scheduledTime: undefined
+          };
+        }
+        return t;
+      })
+    );
+    triggerNotification("Task Migrated", "Task successfully moved to tomorrow's focus list.", "info");
   };
 
   // Local Time State
@@ -615,12 +707,19 @@ export default function App() {
     if (tasks.length === 0) return;
     setIsPrioritizing(true);
     try {
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, "0");
+      const currentMin = String(now.getMinutes()).padStart(2, "0");
+      const currentTimeStr = `${currentHour}:${currentMin}`;
+
       const response = await fetch("/api/ai-scheduler", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tasks: tasks.filter(t => t.period === activePeriod),
           habits,
+          currentTime: currentTimeStr,
+          period: activePeriod,
           options: {
             includeBreaks: schedulerIncludeBreaks,
             mixCategories: schedulerMixCategories,
@@ -639,6 +738,7 @@ export default function App() {
       
       // Update tasks state with scheduledTime, priority, and any new breaks
       if (data.scheduledTasks && Array.isArray(data.scheduledTasks)) {
+        let overflowCount = 0;
         setTasks((prev) => {
           // Filter out old break tasks for this active period first to avoid duplicating breaks
           const filteredPrev = prev.filter(t => !(t.id.startsWith("task-break-") && t.period === activePeriod));
@@ -646,23 +746,34 @@ export default function App() {
           return filteredPrev.map((t) => {
             const update = data.scheduledTasks.find((u: any) => u.id === t.id);
             if (update) {
+              const updatedPeriod = update.period || t.period;
+              if (updatedPeriod === "overflow") {
+                overflowCount++;
+              }
               return { 
                 ...t, 
                 priority: update.priority || t.priority,
-                scheduledTime: update.scheduledTime || t.scheduledTime
+                scheduledTime: update.scheduledTime || t.scheduledTime,
+                period: updatedPeriod
               };
             }
             return t;
           });
         });
 
-
-
-        triggerNotification(
-          "Schedule Generated",
-          "Gemini has successfully organized your tasks and avoided timeline overlaps!",
-          "success"
-        );
+        if (overflowCount > 0) {
+          triggerNotification(
+            "Schedule Overflow",
+            `${overflowCount} tasks did not fit today and have been moved to the Schedule Overflow Tray at the bottom.`,
+            "warning"
+          );
+        } else {
+          triggerNotification(
+            "Schedule Generated",
+            "Gemini has successfully organized your tasks and avoided timeline overlaps!",
+            "success"
+          );
+        }
       }
       
       if (data.tokenUsage) {
@@ -1405,6 +1516,11 @@ export default function App() {
                           />
                         </div>
 
+                        {/* Disclaimer */}
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/5 p-2 rounded-lg border border-amber-500/10 leading-normal font-medium">
+                          ⚠️ Disclaimer: Running the AI scheduler updates priorities and timings, which directly alters the task card details in the main Tasks View.
+                        </div>
+
                         {/* Trigger button */}
                         <button
                           onClick={handleAISchedule}
@@ -1679,6 +1795,56 @@ export default function App() {
                 </div>
               )}
 
+              {/* Overflow Tray Card */}
+              {tasks.some((t) => t.period === 'overflow') && (
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 shadow-xs space-y-3 font-sans text-left">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="w-4.5 h-4.5" />
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider">
+                      AI Schedule Overflow ({tasks.filter((t) => t.period === 'overflow').length} Tasks)
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-nature-600 dark:text-nature-350 leading-normal">
+                    These tasks could not fit in today's remaining time (before 11:00 PM) without causing schedule overlaps. Choose how to resolve them:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {tasks
+                      .filter((t) => t.period === 'overflow')
+                      .map((task) => (
+                        <div
+                          key={task.id}
+                          className="bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 p-3 rounded-xl flex items-start justify-between gap-3 text-left shadow-2xs hover:border-nature-350 dark:hover:border-nature-700 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h5 className="text-xs font-bold text-nature-950 dark:text-white truncate">
+                              {task.title}
+                            </h5>
+                            <span className="text-[10px] text-nature-500 dark:text-nature-450 font-mono">
+                              Duration: {task.duration} mins
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 self-center">
+                            <button
+                              onClick={() => handleJamInToday(task.id)}
+                              className="px-2 py-1 bg-sage-50 hover:bg-sage-100 dark:bg-sage-950/30 dark:hover:bg-sage-900 border border-sage-200/60 dark:border-sage-800/40 text-[10px] font-bold text-sage-700 dark:text-sage-300 rounded-lg cursor-pointer transition-colors"
+                              title="Force this task into today's timeline"
+                            >
+                              Jam Today
+                            </button>
+                            <button
+                              onClick={() => handleMigrateToTomorrow(task.id)}
+                              className="px-2 py-1 bg-nature-100 hover:bg-nature-200 dark:bg-nature-800 dark:hover:bg-nature-750 border border-nature-200 dark:border-nature-700 text-[10px] font-bold text-nature-700 dark:text-nature-300 rounded-lg cursor-pointer transition-colors"
+                              title="Migrate task to tomorrow's list"
+                            >
+                              Move Tomorrow
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
               {isCalendarView ? (
                 /* Timeline Calendar Agenda View */
                 <CalendarAgenda
@@ -1813,9 +1979,10 @@ export default function App() {
                   </h4>
                   <button
                     onClick={() => setIsAddingHabit(!isAddingHabit)}
-                    className="px-2 py-1 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="px-2 py-1 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                   >
-                    {isAddingHabit ? "Close" : "Add Habit"}
+                    <span>{isAddingHabit ? "Close" : "Add Habit"}</span>
+                    {!isAddingHabit && <Plus className="w-3 h-3" />}
                   </button>
                 </div>
 
@@ -1940,8 +2107,15 @@ export default function App() {
                     </div>
                   ) : (
                     habits.map((habit) => {
-                      const todayStr = new Date().toISOString().split("T")[0];
-                      const isCompleted = habit.lastCompletedDate === todayStr;
+                      const getHabitDay = (d: Date) => {
+                        const adj = new Date(d.getTime());
+                        if (adj.getHours() < 8) {
+                          adj.setDate(adj.getDate() - 1);
+                        }
+                        return adj.toISOString().split("T")[0];
+                      };
+                      const habitTodayStr = getHabitDay(new Date());
+                      const isCompleted = habit.lastCompletedDate === habitTodayStr;
                       return (
                         <div
                           key={habit.id}
@@ -1990,6 +2164,12 @@ export default function App() {
                                 <span className="text-sage-600 dark:text-sage-400 font-bold bg-sage-55/40 dark:bg-sage-950/40 px-1 py-0.5 rounded border border-sage-100/40">
                                   {habit.time} ({habit.duration}m)
                                 </span>
+                                {habit.enabled && habit.streak > 0 && (
+                                  <span className="flex items-center gap-0.5 text-orange-600 dark:text-orange-400 font-extrabold bg-orange-50/50 dark:bg-orange-950/20 px-1 py-0.5 rounded border border-orange-100/50 dark:border-orange-900/20">
+                                    <Flame className="w-3 h-3 text-orange-500 fill-orange-500" />
+                                    <span>{habit.streak}d streak</span>
+                                  </span>
+                                )}
                                 <span className="text-nature-450 dark:text-nature-400 capitalize px-1 py-0.5 bg-nature-100 dark:bg-nature-800 rounded">
                                   {habit.category}
                                 </span>
@@ -2266,6 +2446,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
       </div>
     </div>
   );
