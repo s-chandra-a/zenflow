@@ -50,4 +50,5 @@ export interface Habit {
   duration: number; // in minutes
   category: string;
   enabled: boolean;
+  lastCompletedDate?: string; // YYYY-MM-DD format
 }

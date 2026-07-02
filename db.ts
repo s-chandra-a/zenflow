@@ -26,7 +26,8 @@ const HabitSchema = new Schema({
   time: { type: String, default: "08:00" },
   duration: { type: Number, default: 15 },
   category: { type: String, default: "health" },
-  enabled: { type: Boolean, default: true }
+  enabled: { type: Boolean, default: true },
+  lastCompletedDate: { type: String }
 }, { timestamps: true });
 
 let TaskModel: mongoose.Model<any>;

@@ -28,6 +28,7 @@ Copy or create the `.env` configuration file in the project root:
   ```env
   GEMINI_API_KEY="your-api-key-here"
   GOOGLE_API_KEY="your-api-key-here"
+  MONGODB_URI="your-api-key-here"
   ```
   *(See the **API Key Guide** below for instructions on obtaining and replacing keys)*
 

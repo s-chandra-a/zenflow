@@ -12,56 +12,7 @@ import FocusWorkflowPanel from "./components/FocusWorkflowPanel";
 import NotificationCenter from "./components/NotificationCenter";
 
 // Polished starter tasks to ensure immediate visual excellence
-const INITIAL_TASKS: Task[] = [
-  {
-    id: "task-1",
-    title: "Review marketing team's strategy brief",
-    description: "Analyze competitor data, note discrepancies, and formulate feedback for client review.",
-    duration: 45,
-    priority: "high",
-    period: "today",
-    category: "work",
-    timeOfDay: "Morning",
-    completed: false,
-    scheduledTime: "09:00",
-  },
-  {
-    id: "task-2",
-    title: "Cardio gym session",
-    description: "30-minute interval run followed by core stretches.",
-    duration: 30,
-    priority: "medium",
-    period: "today",
-    category: "health",
-    timeOfDay: "Afternoon",
-    completed: true,
-    scheduledTime: "14:00",
-  },
-  {
-    id: "task-3",
-    title: "Prepare healthy visual lasagna recipe",
-    description: "Gather fresh spinach, ricotta, and whole grain sheets.",
-    duration: 30,
-    priority: "low",
-    period: "today",
-    category: "personal",
-    timeOfDay: "Evening",
-    completed: false,
-    scheduledTime: "18:00",
-  },
-  {
-    id: "task-4",
-    title: "Read System Design Patterns (Chapters 4-5)",
-    description: "Focus on database scaling, sharding concepts, and microservices topologies.",
-    duration: 60,
-    priority: "medium",
-    period: "tomorrow",
-    category: "learning",
-    timeOfDay: "Morning",
-    completed: false,
-    scheduledTime: "10:00",
-  }
-];
+const INITIAL_TASKS: Task[] = [];
 
 export default function App() {
   // Primary States
@@ -231,35 +182,7 @@ export default function App() {
   const bypassAI = apiTier === 'free' && tokensUsed >= TOKEN_QUOTA;
 
   // Habits Manager State
-  const DEFAULT_HABITS: Habit[] = [
-    {
-      id: "habit-1",
-      title: "Morning Mindfulness Meditation",
-      description: "Focus on breath awareness and sensory anchoring to set intention.",
-      time: "08:00",
-      duration: 15,
-      category: "health",
-      enabled: true,
-    },
-    {
-      id: "habit-2",
-      title: "Mid-Day Code Review Refactor",
-      description: "Audit active work repositories for variable naming, exports, and optimization.",
-      time: "13:00",
-      duration: 30,
-      category: "work",
-      enabled: false,
-    },
-    {
-      id: "habit-3",
-      title: "Evening Wind Down Journaling",
-      description: "Reflect on accomplishments, capture stress points, and shut off screen time.",
-      time: "20:00",
-      duration: 15,
-      category: "personal",
-      enabled: true,
-    }
-  ];
+  const DEFAULT_HABITS: Habit[] = [];
 
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
 
@@ -300,6 +223,10 @@ export default function App() {
             body: JSON.stringify({ habits: DEFAULT_HABITS })
           });
         }
+
+        // Filter out legacy dummy tasks and habits if any exist
+        serverTasks = serverTasks.filter(t => !["task-1", "task-2", "task-3", "task-4"].includes(t.id));
+        serverHabits = serverHabits.filter(h => !["habit-1", "habit-2", "habit-3"].includes(h.id));
 
         setTasks(serverTasks);
         setHabits(serverHabits);
@@ -574,6 +501,27 @@ export default function App() {
         "info"
       );
     }
+  };
+
+  const handleToggleHabitCompleted = (id: string) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    setHabits((prev) =>
+      prev.map((h) => {
+        if (h.id === id) {
+          const isCompleted = h.lastCompletedDate === todayStr;
+          const nextDate = isCompleted ? "" : todayStr;
+          if (!isCompleted) {
+            triggerNotification(
+              "Habit Completed Today",
+              `Splendid! You checked off "${h.title}" for today.`,
+              "success"
+            );
+          }
+          return { ...h, lastCompletedDate: nextDate };
+        }
+        return h;
+      })
+    );
   };
 
   // Local Time State
@@ -1991,62 +1939,91 @@ export default function App() {
                       <p className="text-xs mt-0.5 text-nature-450">Click "Add Habit" to register routines.</p>
                     </div>
                   ) : (
-                    habits.map((habit) => (
-                      <div
-                        key={habit.id}
-                        className={`p-3 rounded-xl border transition-all duration-200 text-left ${
-                          !habit.enabled
-                            ? "bg-nature-50/40 dark:bg-nature-950/20 border-nature-200 dark:border-nature-850 opacity-60"
-                            : "bg-white dark:bg-nature-900 border-nature-200 dark:border-nature-800 hover:border-nature-350 dark:hover:border-nature-700"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <h5 className="text-sm font-bold text-nature-950 dark:text-white truncate">
-                              {habit.title}
-                            </h5>
-                            {habit.description && (
-                              <p className="text-xs text-nature-550 dark:text-nature-400 mt-0.5 line-clamp-2 leading-relaxed">
-                                {habit.description}
-                              </p>
+                    habits.map((habit) => {
+                      const todayStr = new Date().toISOString().split("T")[0];
+                      const isCompleted = habit.lastCompletedDate === todayStr;
+                      return (
+                        <div
+                          key={habit.id}
+                          className={`p-3 rounded-xl border transition-all duration-200 text-left ${
+                            !habit.enabled
+                              ? "bg-nature-50/40 dark:bg-nature-950/20 border-nature-200 dark:border-nature-850 opacity-60"
+                              : isCompleted
+                              ? "bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-200/50 dark:border-emerald-900/30"
+                              : "bg-white dark:bg-nature-900 border-nature-200 dark:border-nature-800 hover:border-nature-350 dark:hover:border-nature-700"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Checkbox for Enabled Habits */}
+                            {habit.enabled && (
+                              <button
+                                onClick={() => handleToggleHabitCompleted(habit.id)}
+                                className="mt-0.5 shrink-0 transition-transform active:scale-95 cursor-pointer focus:outline-none"
+                                title={isCompleted ? "Mark incomplete" : "Mark completed"}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full border-2 border-nature-350 dark:border-nature-700 hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors" />
+                                )}
+                              </button>
                             )}
-                            <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[10px] font-mono">
-                              <span className="text-sage-600 dark:text-sage-400 font-bold bg-sage-55/40 dark:bg-sage-950/40 px-1 py-0.5 rounded border border-sage-100/40">
-                                {habit.time} ({habit.duration}m)
-                              </span>
-                              <span className="text-nature-450 dark:text-nature-400 capitalize px-1 py-0.5 bg-nature-100 dark:bg-nature-800 rounded">
-                                {habit.category}
-                              </span>
-                            </div>
-                          </div>
 
-                          <div className="flex flex-col items-end gap-1.5 shrink-0">
-                            <button
-                              onClick={() => handleToggleHabitEnabled(habit.id)}
-                              className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-nature-100 hover:bg-nature-200 dark:bg-nature-800 dark:hover:bg-nature-700 border border-nature-200 dark:border-nature-750 text-nature-700 dark:text-nature-300 cursor-pointer"
-                            >
-                              {habit.enabled ? "Disable" : "Enable"}
-                            </button>
-                            <div className="flex items-center gap-1">
+                            <div className="min-w-0 flex-1">
+                              <h5 className={`text-sm font-bold truncate ${
+                                habit.enabled && isCompleted
+                                  ? "line-through text-nature-400 dark:text-nature-550"
+                                  : "text-nature-950 dark:text-white"
+                              }`}>
+                                {habit.title}
+                              </h5>
+                              {habit.description && (
+                                <p className={`text-xs mt-0.5 line-clamp-2 leading-relaxed ${
+                                  habit.enabled && isCompleted
+                                    ? "line-through text-nature-400/70 dark:text-nature-550/70"
+                                    : "text-nature-550 dark:text-nature-400"
+                                }`}>
+                                  {habit.description}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[10px] font-mono">
+                                <span className="text-sage-600 dark:text-sage-400 font-bold bg-sage-55/40 dark:bg-sage-950/40 px-1 py-0.5 rounded border border-sage-100/40">
+                                  {habit.time} ({habit.duration}m)
+                                </span>
+                                <span className="text-nature-450 dark:text-nature-400 capitalize px-1 py-0.5 bg-nature-100 dark:bg-nature-800 rounded">
+                                  {habit.category}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1.5 shrink-0 self-start">
                               <button
-                                onClick={() => handleStartEditHabit(habit)}
-                                className="p-1 rounded hover:bg-nature-100 dark:hover:bg-nature-800 text-nature-450 hover:text-nature-700 cursor-pointer"
-                                title="Edit"
+                                onClick={() => handleToggleHabitEnabled(habit.id)}
+                                className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-nature-100 hover:bg-nature-200 dark:bg-nature-800 dark:hover:bg-nature-700 border border-nature-200 dark:border-nature-750 text-nature-700 dark:text-nature-300 cursor-pointer"
                               >
-                                <Edit3 className="w-3 h-3" />
+                                {habit.enabled ? "Disable" : "Enable"}
                               </button>
-                              <button
-                                onClick={() => handleDeleteHabit(habit.id)}
-                                className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-nature-450 hover:text-rose-600 cursor-pointer"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleStartEditHabit(habit)}
+                                  className="p-1 rounded hover:bg-nature-100 dark:hover:bg-nature-800 text-nature-450 hover:text-nature-700 cursor-pointer"
+                                  title="Edit"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteHabit(habit.id)}
+                                  className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-nature-450 hover:text-rose-600 cursor-pointer"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
