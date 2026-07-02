@@ -1,0 +1,81 @@
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Review marketing team's strategy brief",
+      "description": "Analyze competitor data, note discrepancies, and formulate feedback for client review.",
+      "duration": 45,
+      "priority": "high",
+      "period": "today",
+      "category": "work",
+      "timeOfDay": "Morning",
+      "completed": false,
+      "scheduledTime": "09:00"
+    },
+    {
+      "id": "task-2",
+      "title": "Cardio gym session",
+      "description": "30-minute interval run followed by core stretches.",
+      "duration": 30,
+      "priority": "medium",
+      "period": "today",
+      "category": "health",
+      "timeOfDay": "Afternoon",
+      "completed": true,
+      "scheduledTime": "14:00"
+    },
+    {
+      "id": "task-3",
+      "title": "Prepare healthy visual lasagna recipe",
+      "description": "Gather fresh spinach, ricotta, and whole grain sheets.",
+      "duration": 30,
+      "priority": "low",
+      "period": "today",
+      "category": "personal",
+      "timeOfDay": "Evening",
+      "completed": false,
+      "scheduledTime": "18:00"
+    },
+    {
+      "id": "task-4",
+      "title": "Read System Design Patterns (Chapters 4-5)",
+      "description": "Focus on database scaling, sharding concepts, and microservices topologies.",
+      "duration": 60,
+      "priority": "medium",
+      "period": "tomorrow",
+      "category": "learning",
+      "timeOfDay": "Morning",
+      "completed": false,
+      "scheduledTime": "10:00"
+    }
+  ],
+  "habits": [
+    {
+      "id": "habit-1",
+      "title": "Morning Mindfulness Meditation",
+      "description": "Focus on breath awareness and sensory anchoring to set intention.",
+      "time": "08:00",
+      "duration": 15,
+      "category": "health",
+      "enabled": true
+    },
+    {
+      "id": "habit-2",
+      "title": "Mid-Day Code Review Refactor",
+      "description": "Audit active work repositories for variable naming, exports, and optimization.",
+      "time": "13:00",
+      "duration": 30,
+      "category": "work",
+      "enabled": false
+    },
+    {
+      "id": "habit-3",
+      "title": "Evening Wind Down Journaling",
+      "description": "Reflect on accomplishments, capture stress points, and shut off screen time.",
+      "time": "20:00",
+      "duration": 15,
+      "category": "personal",
+      "enabled": true
+    }
+  ]
+}

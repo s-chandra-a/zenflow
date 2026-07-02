@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sage-50: var(--sage-50);
+  --color-sage-100: var(--sage-100);
+  --color-sage-150: var(--sage-150);
+  --color-sage-200: var(--sage-200);
+  --color-sage-400: var(--sage-400);
+  --color-sage-450: var(--sage-450);
+  --color-sage-500: var(--sage-500);
+  --color-sage-600: var(--sage-600);
+  --color-sage-700: var(--sage-700);
+  --color-sage-800: var(--sage-800);
+  --color-sage-900: var(--sage-900);
+  --color-sage-950: var(--sage-950);
+
+  --color-nature-50: var(--nature-50);
+  --color-nature-100: var(--nature-100);
+  --color-nature-150: var(--nature-150);
+  --color-nature-200: var(--nature-200);
+  --color-nature-250: var(--nature-250);
+  --color-nature-300: var(--nature-300);
+  --color-nature-400: var(--nature-400);
+  --color-nature-450: var(--nature-450);
+  --color-nature-500: var(--nature-500);
+  --color-nature-600: var(--nature-600);
+  --color-nature-700: var(--nature-700);
+  --color-nature-800: var(--nature-800);
+  --color-nature-850: var(--nature-850);
+  --color-nature-900: var(--nature-900);
+  --color-nature-950: var(--nature-950);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Root and theme-specific color maps */
+:root {
+  /* Default Zen Forest values */
+  --sage-50: #F5F7F1;
+  --sage-100: #E9EDDF;
+  --sage-150: #DFE5CE;
+  --sage-200: #CBD5B2;
+  --sage-400: #8FA87F;
+  --sage-450: #748A63;
+  --sage-500: #5C7247;
+  --sage-600: #495E35;
+  --sage-700: #384A28;
+  --sage-800: #29381C;
+  --sage-900: #1B2612;
+  --sage-950: #0E1408;
+
+  --nature-50: #FDFCFA;
+  --nature-100: #F7F4EF;
+  --nature-150: #EDE9E1;
+  --nature-200: #DFDAD1;
+  --nature-250: #D0C9BE;
+  --nature-300: #C1B7AA;
+  --nature-400: #A39686;
+  --nature-450: #887A6A;
+  --nature-500: #6D6153;
+  --nature-600: #564D41;
+  --nature-700: #4B453D;
+  --nature-800: #3A352F;
+  --nature-850: #2D2924;
+  --nature-900: #211E1A;
+  --nature-950: #161412;
+}
+
+/* 1. Zen Forest Theme (Deepened for more crisp contrast) */
+.theme-forest {
+  --sage-50: #F5F7F1;
+  --sage-100: #E9EDDF;
+  --sage-150: #DFE5CE;
+  --sage-200: #CBD5B2;
+  --sage-400: #8FA87F;
+  --sage-450: #748A63;
+  --sage-500: #5C7247;
+  --sage-600: #495E35;
+  --sage-700: #384A28;
+  --sage-800: #29381C;
+  --sage-900: #1B2612;
+  --sage-950: #0E1408;
+
+  --nature-50: #FDFCFA;
+  --nature-100: #F7F4EF;
+  --nature-150: #EDE9E1;
+  --nature-200: #DFDAD1;
+  --nature-250: #D0C9BE;
+  --nature-300: #C1B7AA;
+  --nature-400: #A39686;
+  --nature-450: #887A6A;
+  --nature-500: #6D6153;
+  --nature-600: #564D41;
+  --nature-700: #4B453D;
+  --nature-800: #3A352F;
+  --nature-850: #2D2924;
+  --nature-900: #211E1A;
+  --nature-950: #161412;
+}
+
+/* 2. Nordic Frost Theme (Deep Slate Blue & Shimmering Ice) */
+.theme-nordic {
+  --sage-50: #EDF2F7;
+  --sage-100: #E2E8F0;
+  --sage-150: #CBD5E0;
+  --sage-200: #A0AEC0;
+  --sage-400: #718096;
+  --sage-450: #4A5568;
+  --sage-500: #2D3748;
+  --sage-600: #1A202C;
+  --sage-700: #171923;
+  --sage-800: #0F111A;
+  --sage-900: #0A0B10;
+  --sage-950: #05060A;
+
+  --nature-50: #F8FAFC;
+  --nature-100: #F1F5F9;
+  --nature-150: #E2E8F0;
+  --nature-200: #CBD5E1;
+  --nature-250: #94A3B8;
+  --nature-300: #64748B;
+  --nature-400: #475569;
+  --nature-450: #334155;
+  --nature-500: #1E293B;
+  --nature-700: #2E3A4E;
+  --nature-800: #242E3E;
+  --nature-850: #1A2230;
+  --nature-900: #121824;
+  --nature-950: #0A0D14;
+}
+
+/* 3. Crimson Sand Theme (Earthy Plaster & Bold Sandstone Crimson) */
+.theme-crimson {
+  --sage-50: #FFF5F5;
+  --sage-100: #FFE3E3;
+  --sage-150: #FFC9C9;
+  --sage-200: #FFA8A8;
+  --sage-400: #E8590C;
+  --sage-450: #D9480F;
+  --sage-500: #C92A2A;
+  --sage-600: #A61E1E;
+  --sage-700: #861818;
+  --sage-800: #661212;
+  --sage-900: #440C0C;
+  --sage-950: #240606;
+
+  --nature-50: #FFFDFB;
+  --nature-100: #FAF6EE;
+  --nature-150: #F1EAD7;
+  --nature-200: #E5DABF;
+  --nature-250: #CDBC96;
+  --nature-300: #B29D72;
+  --nature-400: #8F7D55;
+  --nature-450: #746442;
+  --nature-500: #5C4F31;
+  --nature-600: #473D23;
+  --nature-700: #4E3C32;
+  --nature-800: #3E3027;
+  --nature-850: #30241E;
+  --nature-900: #241A15;
+  --nature-950: #18110E;
+}
+
+/* 4. Royal Orchid Theme (Ivory Pearl & Deep Velvet Amethyst) */
+.theme-orchid {
+  --sage-50: #FAF5FF;
+  --sage-100: #F3E8FF;
+  --sage-150: #E9D5FF;
+  --sage-200: #D8B4FE;
+  --sage-400: #A855F7;
+  --sage-450: #9333EA;
+  --sage-500: #7E22CE;
+  --sage-600: #6B21A8;
+  --sage-700: #581C87;
+  --sage-800: #4C1D95;
+  --sage-900: #2E1065;
+  --sage-950: #170535;
+
+  --nature-50: #FDFBFC;
+  --nature-100: #F7EFF2;
+  --nature-150: #ECE0E4;
+  --nature-200: #DFC2CC;
+  --nature-250: #CD9EB0;
+  --nature-300: #B77A93;
+  --nature-400: #975A72;
+  --nature-450: #7B4459;
+  --nature-500: #633346;
+  --nature-600: #4D2534;
+  --nature-700: #46313C;
+  --nature-800: #37252F;
+  --nature-850: #2A1C24;
+  --nature-900: #1F131A;
+  --nature-950: #150C11;
+}

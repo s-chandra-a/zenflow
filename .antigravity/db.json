@@ -1,0 +1,39 @@
+{
+  "tasks": [
+    {
+      "id": "task-2",
+      "title": "Cardio gym session",
+      "description": "30-minute interval run followed by core stretches.",
+      "duration": 30,
+      "priority": "medium",
+      "period": "today",
+      "category": "health",
+      "timeOfDay": "Afternoon",
+      "completed": true,
+      "scheduledTime": "14:00"
+    },
+    {
+      "id": "task-4",
+      "title": "Read System Design Patterns (Chapters 4-5)",
+      "description": "Focus on database scaling, sharding concepts, and microservices topologies.",
+      "duration": 60,
+      "priority": "medium",
+      "period": "tomorrow",
+      "category": "learning",
+      "timeOfDay": "Morning",
+      "completed": false,
+      "scheduledTime": "10:00"
+    }
+  ],
+  "habits": [
+    {
+      "id": "habit-1782964861965-408046",
+      "title": "Brush",
+      "description": "",
+      "time": "08:00",
+      "duration": 15,
+      "category": "health",
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"name":"AI Task \u0026 Workflow Planner","description":"Process text files into dynamic task lists, generate interactive step-by-step workflows, and schedule custom productivity notifications.","requestFramePermissions":["microphone"],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
