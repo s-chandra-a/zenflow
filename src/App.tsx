@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, Upload, Calendar, List, Sparkles, Plus, Clock, 
   Settings, CheckCircle, CheckCircle2, ChevronRight, Play, Loader2, AlertCircle, X,
-  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame
+  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Task, InAppNotification, Habit } from "./types";
@@ -43,7 +43,7 @@ export default function App() {
   const [isCalendarView, setIsCalendarView] = useState(false);
   const [selectedWorkflowTask, setSelectedWorkflowTask] = useState<Task | null>(null);
   const [activePeriod, setActivePeriod] = useState<'today' | 'tomorrow' | 'yesterday'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'focus' | 'habits'>('habits');
+  const [rightPanelTab, setRightPanelTab] = useState<'focus' | 'habits' | 'tracker'>('habits');
 
   const handleSelectWorkflowTask = (task: Task) => {
     setSelectedWorkflowTask(task);
@@ -94,6 +94,15 @@ export default function App() {
   const [schedulerIncludeBreaks, setSchedulerIncludeBreaks] = useState(true);
   const [schedulerMixCategories, setSchedulerMixCategories] = useState(true);
   const [schedulerContext, setSchedulerContext] = useState("");
+
+  // User settings and productivity stats states
+  const [keepYesterdayTasks, setKeepYesterdayTasks] = useState(true);
+  const [daysCount, setDaysCount] = useState(0);
+  const [totalCompletedTasks, setTotalCompletedTasks] = useState(0);
+  const [totalUncompletedTasks, setTotalUncompletedTasks] = useState(0);
+  const [lastRolloverDate, setLastRolloverDate] = useState("");
+  const [celebrationEffect, setCelebrationEffect] = useState<{ type: 'streak' | 'perfect-day'; value?: number } | null>(null);
+  const [clickedStreakId, setClickedStreakId] = useState<string | null>(null);
 
   const checkDbStatus = async () => {
     try {
@@ -249,11 +258,103 @@ export default function App() {
         
         serverHabits = serverHabits.map((h) => {
           const currentStreak = h.streak ?? 0;
+          if (!h.enabled) {
+            // Paused: preserve the streak exactly
+            return h;
+          }
           if (h.lastCompletedDate && h.lastCompletedDate !== habitTodayStr && h.lastCompletedDate !== habitYesterdayStr) {
             return { ...h, streak: 0 };
           }
           return { ...h, streak: currentStreak };
         });
+
+        // Fetch settings
+        const settingsRes = await fetch("/api/settings");
+        let serverSettings = {
+          keepYesterdayTasks: true,
+          daysCount: 0,
+          totalCompletedTasks: 0,
+          totalUncompletedTasks: 0,
+          lastRolloverDate: ""
+        };
+        if (settingsRes.ok) {
+          serverSettings = await settingsRes.json();
+          setKeepYesterdayTasks(serverSettings.keepYesterdayTasks);
+          setDaysCount(serverSettings.daysCount);
+          setTotalCompletedTasks(serverSettings.totalCompletedTasks);
+          setTotalUncompletedTasks(serverSettings.totalUncompletedTasks);
+          setLastRolloverDate(serverSettings.lastRolloverDate);
+        }
+
+        const currentHabitDay = habitTodayStr;
+
+        if (!serverSettings.lastRolloverDate) {
+          // First run initialization: set last rollover date without shifting
+          const initSettings = {
+            ...serverSettings,
+            lastRolloverDate: currentHabitDay
+          };
+          await fetch("/api/settings/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ settings: initSettings })
+          });
+          setLastRolloverDate(currentHabitDay);
+        } else if (serverSettings.lastRolloverDate !== currentHabitDay) {
+          // A rollover is triggered!
+          // 1. Record completed vs uncompleted for today's tasks
+          const todayCompleted = serverTasks.filter(t => t.period === 'today' && t.completed).length;
+          const todayUncompleted = serverTasks.filter(t => t.period === 'today' && !t.completed).length;
+
+          const newDaysCount = serverSettings.daysCount + 1;
+          const newTotalCompleted = serverSettings.totalCompletedTasks + todayCompleted;
+          const newTotalUncompleted = serverSettings.totalUncompletedTasks + todayUncompleted;
+          const newLastRolloverDate = currentHabitDay;
+
+          setDaysCount(newDaysCount);
+          setTotalCompletedTasks(newTotalCompleted);
+          setTotalUncompletedTasks(newTotalUncompleted);
+          setLastRolloverDate(newLastRolloverDate);
+
+          // 2. Shift tasks:
+          // If keepYesterdayTasks is false, delete existing yesterday tasks
+          if (!serverSettings.keepYesterdayTasks) {
+            serverTasks = serverTasks.filter(t => t.period !== 'yesterday');
+          }
+          // Now map and transition period:
+          // - 'yesterday' -> remains 'yesterday'
+          // - 'today' / 'overflow' -> 'yesterday'
+          // - 'tomorrow' -> 'today'
+          serverTasks = serverTasks.map(t => {
+            if (t.period === 'today' || t.period === 'overflow') {
+              return { ...t, period: 'yesterday' };
+            } else if (t.period === 'tomorrow') {
+              return { ...t, period: 'today' };
+            }
+            return t;
+          });
+
+          // Sync tasks and updated settings to server
+          await fetch("/api/tasks/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tasks: serverTasks })
+          });
+
+          await fetch("/api/settings/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              settings: {
+                keepYesterdayTasks: serverSettings.keepYesterdayTasks,
+                daysCount: newDaysCount,
+                totalCompletedTasks: newTotalCompleted,
+                totalUncompletedTasks: newTotalUncompleted,
+                lastRolloverDate: newLastRolloverDate
+              }
+            })
+          });
+        }
 
         setTasks(serverTasks);
         setHabits(serverHabits);
@@ -295,6 +396,46 @@ export default function App() {
 
     return () => clearTimeout(timeoutId);
   }, [habits, isInitialLoadComplete]);
+
+  // Sync settings to server when changed (debounced)
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+
+    const timeoutId = setTimeout(() => {
+      fetch("/api/settings/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            keepYesterdayTasks,
+            daysCount,
+            totalCompletedTasks,
+            totalUncompletedTasks,
+            lastRolloverDate
+          }
+        })
+      }).catch((err) => console.error("Error syncing settings to server:", err));
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [keepYesterdayTasks, daysCount, totalCompletedTasks, totalUncompletedTasks, lastRolloverDate, isInitialLoadComplete]);
+
+  // Auto-clear celebration confetti after 5 seconds
+  useEffect(() => {
+    if (celebrationEffect) {
+      const timer = setTimeout(() => {
+        setCelebrationEffect(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [celebrationEffect]);
+
+  const handleResetProductivity = async () => {
+    setDaysCount(0);
+    setTotalCompletedTasks(0);
+    setTotalUncompletedTasks(0);
+    triggerNotification("Stats Reset", "Productivity stats have been reset to zero.", "info");
+  };
 
   // Dark Mode Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -524,8 +665,8 @@ export default function App() {
     const target = habits.find((h) => h.id === id);
     if (target) {
       triggerNotification(
-        target.enabled ? "Habit Disabled" : "Habit Enabled",
-        `"${target.title}" is now ${target.enabled ? 'disabled' : 'enabled'}.`,
+        target.enabled ? "Habit Paused" : "Habit Resumed",
+        `"${target.title}" is now ${target.enabled ? 'paused (streak preserved)' : 'resumed'}.`,
         "info"
       );
     }
@@ -574,12 +715,31 @@ export default function App() {
               `Splendid! You checked off "${h.title}" for today. Streak: ${nextStreak} days!`,
               "success"
             );
+            if (nextStreak > 0 && nextStreak % 100 === 0) {
+              setCelebrationEffect({ type: 'streak', value: nextStreak });
+            }
           }
           return { ...h, lastCompletedDate: nextDate, streak: nextStreak };
         }
         return h;
       })
     );
+  };
+
+  const handleStreakClick = (habit: Habit) => {
+    setClickedStreakId(habit.id);
+    setTimeout(() => setClickedStreakId(null), 600);
+
+    triggerNotification(
+      "Streak Stats",
+      `You are on an active ${habit.streak}-day streak for "${habit.title}"! 🔥`,
+      "success"
+    );
+
+    // Celebrate milestone if streak is a multiple of 100
+    if (habit.streak > 0 && habit.streak % 100 === 0) {
+      setCelebrationEffect({ type: 'streak', value: habit.streak });
+    }
   };
 
   const handleJamInToday = (taskId: string) => {
@@ -1029,8 +1189,8 @@ export default function App() {
 
   // Task Manipulation
   const handleToggleComplete = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
         if (t.id === id) {
           const nextState = !t.completed;
           if (nextState) {
@@ -1039,8 +1199,22 @@ export default function App() {
           return { ...t, completed: nextState };
         }
         return t;
-      })
-    );
+      });
+
+      const targetTask = prev.find(t => t.id === id);
+      if (targetTask) {
+        const period = targetTask.period;
+        const periodTasks = updated.filter(t => t.period === period);
+        const allCompleted = periodTasks.length > 0 && periodTasks.every(t => t.completed);
+        const wasNotAllCompleted = prev.filter(t => t.period === period).some(t => !t.completed);
+
+        if (allCompleted && wasNotAllCompleted) {
+          setCelebrationEffect({ type: 'perfect-day' });
+        }
+      }
+
+      return updated;
+    });
   };
 
   const handleDeleteTask = (id: string) => {
@@ -1943,6 +2117,17 @@ export default function App() {
                 <Clock className="w-3.5 h-3.5" />
                 <span>Habits Manager</span>
               </button>
+              <button
+                onClick={() => setRightPanelTab('tracker')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  rightPanelTab === 'tracker'
+                    ? "bg-sage-600 text-white shadow-xs"
+                    : "text-nature-600 hover:text-nature-900 dark:text-nature-400 hover:bg-nature-100 dark:hover:bg-nature-800"
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Scorecard</span>
+              </button>
             </div>
 
             {/* Tab Body */}
@@ -1970,7 +2155,7 @@ export default function App() {
                   </p>
                 </div>
               )
-            ) : (
+            ) : rightPanelTab === 'habits' ? (
               /* Compact Habits Manager Dashboard inside the right panel */
               <div className="flex-1 lg:overflow-y-auto overflow-visible p-4 space-y-4 lg:max-h-[calc(100vh-200px)]">
                 <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-850 pb-2">
@@ -2165,10 +2350,17 @@ export default function App() {
                                   {habit.time} ({habit.duration}m)
                                 </span>
                                 {habit.enabled && habit.streak > 0 && (
-                                  <span className="flex items-center gap-0.5 text-orange-600 dark:text-orange-400 font-extrabold bg-orange-50/50 dark:bg-orange-950/20 px-1 py-0.5 rounded border border-orange-100/50 dark:border-orange-900/20">
+                                  <button
+                                    onClick={() => handleStreakClick(habit)}
+                                    className={`flex items-center gap-0.5 font-extrabold px-1 py-0.5 rounded border transition-all cursor-pointer ${
+                                      clickedStreakId === habit.id
+                                        ? "bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 scale-110 animate-bounce"
+                                        : "bg-orange-50/50 dark:bg-orange-950/20 border-orange-100/50 dark:border-orange-900/20 text-orange-600 dark:text-orange-400 hover:scale-105 active:scale-95"
+                                    }`}
+                                  >
                                     <Flame className="w-3 h-3 text-orange-500 fill-orange-500" />
                                     <span>{habit.streak}d streak</span>
-                                  </span>
+                                  </button>
                                 )}
                                 <span className="text-nature-450 dark:text-nature-400 capitalize px-1 py-0.5 bg-nature-100 dark:bg-nature-800 rounded">
                                   {habit.category}
@@ -2181,7 +2373,7 @@ export default function App() {
                                 onClick={() => handleToggleHabitEnabled(habit.id)}
                                 className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-nature-100 hover:bg-nature-200 dark:bg-nature-800 dark:hover:bg-nature-700 border border-nature-200 dark:border-nature-750 text-nature-700 dark:text-nature-300 cursor-pointer"
                               >
-                                {habit.enabled ? "Disable" : "Enable"}
+                                {habit.enabled ? "Pause" : "Resume"}
                               </button>
                               <div className="flex items-center gap-1">
                                 <button
@@ -2206,6 +2398,123 @@ export default function App() {
                     })
                   )}
                 </div>
+              </div>
+            ) : (
+              /* Productivity Tracker Dashboard */
+              <div className="flex-1 lg:overflow-y-auto overflow-visible p-4 space-y-4 lg:max-h-[calc(100vh-200px)] text-left">
+                <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-850 pb-2">
+                  <h4 className="text-sm font-bold text-nature-800 dark:text-nature-200">
+                    Productivity Scorecard
+                  </h4>
+                </div>
+
+                {/* Archiving Toggle Card */}
+                <div className="bg-nature-50/50 dark:bg-nature-950/40 border border-nature-200 dark:border-nature-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold text-nature-850 dark:text-nature-150 block font-sans">
+                        Yesterday Archiving
+                      </span>
+                      <span className="text-[10px] text-nature-500 dark:text-nature-450 leading-relaxed block max-w-[280px]">
+                        {keepYesterdayTasks
+                          ? "Tasks remain accumulated in the Yesterday view history column on daily rollover."
+                          : "Tasks are permanently deleted from database when they go past Yesterday."}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setKeepYesterdayTasks(!keepYesterdayTasks)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        keepYesterdayTasks ? 'bg-sage-600' : 'bg-nature-250 dark:bg-nature-850'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          keepYesterdayTasks ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Score Stats Card */}
+                {(() => {
+                  const score = (totalCompletedTasks + totalUncompletedTasks) > 0
+                    ? Math.round((totalCompletedTasks / (totalCompletedTasks + totalUncompletedTasks)) * 100)
+                    : 0;
+
+                  return (
+                    <div className="bg-white dark:bg-nature-900 border border-nature-200 dark:border-nature-800 p-4 rounded-xl space-y-4">
+                      <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-sage-600 dark:text-sage-450">
+                        Productivity Stats
+                      </h5>
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="relative flex items-center justify-center shrink-0">
+                          {/* Radial Progress Ring */}
+                          <svg className="w-20 h-20 transform -rotate-90">
+                            <circle
+                              cx="40"
+                              cy="40"
+                              r="32"
+                              stroke="currentColor"
+                              strokeWidth="6"
+                              className="text-nature-100 dark:text-nature-800"
+                              fill="transparent"
+                            />
+                            <circle
+                              cx="40"
+                              cy="40"
+                              r="32"
+                              stroke="currentColor"
+                              strokeWidth="6"
+                              className={
+                                score >= 80
+                                  ? "text-emerald-500"
+                                  : score >= 50
+                                  ? "text-amber-500"
+                                  : "text-rose-500"
+                              }
+                              strokeDasharray={2 * Math.PI * 32}
+                              strokeDashoffset={2 * Math.PI * 32 * (1 - score / 100)}
+                              fill="transparent"
+                            />
+                          </svg>
+                          <div className="absolute flex flex-col items-center justify-center">
+                            <span className="text-base font-bold text-nature-850 dark:text-white">
+                              {score}%
+                            </span>
+                            <span className="text-[8px] uppercase font-bold text-nature-450 dark:text-nature-500 tracking-wider">
+                              Score
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 w-full space-y-2">
+                          <div className="flex justify-between text-xs font-mono">
+                            <span className="text-nature-450 dark:text-nature-500">Days Active:</span>
+                            <span className="font-bold text-nature-850 dark:text-nature-200">{daysCount}d</span>
+                          </div>
+                          <div className="flex justify-between text-xs font-mono">
+                            <span className="text-nature-450 dark:text-nature-500">Completed Tasks:</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-450">{totalCompletedTasks}</span>
+                          </div>
+                          <div className="flex justify-between text-xs font-mono">
+                            <span className="text-nature-450 dark:text-nature-500">Uncompleted Tasks:</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-450">{totalUncompletedTasks}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Reset Stats Trigger */}
+                      <button
+                        onClick={handleResetProductivity}
+                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Reset Scorecard & Days count
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -2444,6 +2753,41 @@ export default function App() {
                 </button>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {celebrationEffect && (
+            <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+              <style>{`
+                @keyframes float-particle {
+                  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+                }
+              `}</style>
+              {/* Confetti particles */}
+              {Array.from({ length: 60 }).map((_, i) => {
+                const size = Math.random() * 8 + 6;
+                const delay = Math.random() * 2;
+                const duration = Math.random() * 2 + 2;
+                const left = Math.random() * 100;
+                const colors = ["bg-amber-400", "bg-yellow-400", "bg-emerald-400", "bg-rose-400", "bg-indigo-400", "bg-teal-400"];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                return (
+                  <div
+                    key={i}
+                    className={`absolute rounded-xs opacity-75 ${color}`}
+                    style={{
+                      width: `${size}px`,
+                      height: `${size}px`,
+                      left: `${left}%`,
+                      top: `-20px`,
+                      animation: `float-particle ${duration}s linear ${delay}s infinite`,
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
         </AnimatePresence>
 

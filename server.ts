@@ -3,7 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
-import { initDB, getTasks, syncTasks, getHabits, syncHabits, getDBStatus, updateMongoURI } from "./db";
+import { initDB, getTasks, syncTasks, getHabits, syncHabits, getDBStatus, updateMongoURI, getSettings, syncSettings } from "./db";
 
 
 // Load environment variables
@@ -157,6 +157,29 @@ app.post("/api/habits/sync", async (req, res) => {
     res.json({ success: true, count: habits.length });
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Failed to sync habits" });
+  }
+});
+
+// Settings & Preferences API Endpoints
+app.get("/api/settings", async (req, res) => {
+  try {
+    const settings = await getSettings();
+    res.json(settings);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to fetch settings" });
+  }
+});
+
+app.post("/api/settings/sync", async (req, res) => {
+  try {
+    const { settings } = req.body;
+    if (!settings) {
+      return res.status(400).json({ error: "settings object is required" });
+    }
+    await syncSettings(settings);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to sync settings" });
   }
 });
 

@@ -31,8 +31,18 @@ const HabitSchema = new Schema({
   streak: { type: Number, default: 0 }
 }, { timestamps: true });
 
+const SettingsSchema = new Schema({
+  key: { type: String, default: "user_settings" },
+  keepYesterdayTasks: { type: Boolean, default: true },
+  daysCount: { type: Number, default: 0 },
+  totalCompletedTasks: { type: Number, default: 0 },
+  totalUncompletedTasks: { type: Number, default: 0 },
+  lastRolloverDate: { type: String, default: "" }
+}, { timestamps: true });
+
 let TaskModel: mongoose.Model<any>;
 let HabitModel: mongoose.Model<any>;
+let SettingsModel: mongoose.Model<any>;
 
 let isMongoConnected = false;
 
@@ -54,6 +64,7 @@ export async function initDB() {
     console.log("🚀 Successfully connected to online MongoDB NoSQL Database!");
     TaskModel = mongoose.model("Task", TaskSchema);
     HabitModel = mongoose.model("Habit", HabitSchema);
+    SettingsModel = mongoose.model("Settings", SettingsSchema);
   } catch (err: any) {
     console.error("❌ Failed to connect to online MongoDB:", err.message);
     console.warn(`📂 Falling back to local file-based database: ${LOCAL_DB_PATH}`);
@@ -116,12 +127,32 @@ export async function updateMongoURI(newUri: string): Promise<{ success: boolean
 
 // Local JSON file database helper
 function initLocalDB() {
+  const defaultSettings = {
+    keepYesterdayTasks: true,
+    daysCount: 0,
+    totalCompletedTasks: 0,
+    totalUncompletedTasks: 0,
+    lastRolloverDate: ""
+  };
+
   if (!fs.existsSync(LOCAL_DB_PATH)) {
-    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ tasks: [], habits: [] }, null, 2));
+    fs.mkdirSync(path.dirname(LOCAL_DB_PATH), { recursive: true });
+    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ tasks: [], habits: [], settings: defaultSettings }, null, 2));
+  } else {
+    try {
+      const content = fs.readFileSync(LOCAL_DB_PATH, "utf-8");
+      const parsed = JSON.parse(content);
+      if (!parsed.settings) {
+        parsed.settings = defaultSettings;
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(parsed, null, 2));
+      }
+    } catch (e) {
+      console.error("Error healing local settings database:", e);
+    }
   }
 }
 
-function readLocalDB(): { tasks: any[]; habits: any[] } {
+function readLocalDB(): { tasks: any[]; habits: any[]; settings?: any } {
   try {
     const data = fs.readFileSync(LOCAL_DB_PATH, "utf-8");
     return JSON.parse(data);
@@ -131,12 +162,67 @@ function readLocalDB(): { tasks: any[]; habits: any[] } {
   }
 }
 
-function writeLocalDB(data: { tasks: any[]; habits: any[] }) {
+function writeLocalDB(data: { tasks: any[]; habits: any[]; settings?: any }) {
   try {
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2));
   } catch (e) {
     console.error("Error writing to local DB file:", e);
   }
+}
+
+export async function getSettings(): Promise<any> {
+  const defaultSettings = {
+    keepYesterdayTasks: true,
+    daysCount: 0,
+    totalCompletedTasks: 0,
+    totalUncompletedTasks: 0,
+    lastRolloverDate: ""
+  };
+
+  if (isMongoConnected) {
+    try {
+      let doc = await SettingsModel.findOne({ key: "user_settings" }).lean();
+      if (!doc) {
+        doc = await SettingsModel.create({ key: "user_settings", ...defaultSettings });
+      }
+      const { _id, __v, key, ...rest } = doc;
+      return rest;
+    } catch (e) {
+      console.error("Error fetching settings from MongoDB, falling back to local DB:", e);
+    }
+  }
+  const db = readLocalDB();
+  if (!db.settings) {
+    db.settings = defaultSettings;
+    writeLocalDB(db);
+  }
+  return db.settings;
+}
+
+export async function syncSettings(settings: any): Promise<void> {
+  const sanitizedSettings = {
+    keepYesterdayTasks: typeof settings.keepYesterdayTasks === "boolean" ? settings.keepYesterdayTasks : true,
+    daysCount: typeof settings.daysCount === "number" ? settings.daysCount : 0,
+    totalCompletedTasks: typeof settings.totalCompletedTasks === "number" ? settings.totalCompletedTasks : 0,
+    totalUncompletedTasks: typeof settings.totalUncompletedTasks === "number" ? settings.totalUncompletedTasks : 0,
+    lastRolloverDate: typeof settings.lastRolloverDate === "string" ? settings.lastRolloverDate : ""
+  };
+
+  if (isMongoConnected) {
+    try {
+      await SettingsModel.updateOne(
+        { key: "user_settings" },
+        { $set: sanitizedSettings },
+        { upsert: true }
+      );
+      return;
+    } catch (e) {
+      console.error("Error syncing settings to MongoDB, falling back to local DB:", e);
+    }
+  }
+  const db = readLocalDB();
+  db.settings = sanitizedSettings;
+  writeLocalDB(db);
 }
 
 export async function getTasks(): Promise<any[]> {
