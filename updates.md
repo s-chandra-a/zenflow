@@ -70,3 +70,35 @@ Welcome to the comprehensive update log of **Zenflow**. This document details al
   - Triggers automatically when a habit streak hits a multiple of **100 days**.
   - Triggers automatically when all scheduled tasks in a period are checked off (**100% Perfect Momentum Day**).
 - **Non-blocking Interaction**: Confetti floats in the background for **5 seconds** and then automatically fades out. All page elements remain interactive during the celebration.
+
+---
+
+## 🔁 9. Habit Calendar Minding
+- **Removed Auto-task Generation**: Active habits are no longer automatically added to today's task list, keeping the list clean and habits centralized in the Habit Manager.
+- **Mind Habits in Schedule Option**: Added a toggle check in the AI Scheduler settings.
+- **Translucent/Blurred Habit Cards**: When checked, the scheduler leaves slots blank for active habits based on their start time and duration, rendering translucent, blurred cards in those spaces.
+- **Interactive Redirect Highlight**: Clicking any habit slot in the calendar timeline opens up the Habits Manager tab in the right sidebar, automatically scrolls to the matching card, and highlights it with a temporary green glowing border/shadow to indicate its location.
+
+---
+
+## 🎨 10. Calendar Visual Adjustments & Parser Time Field
+- **Pulsating Animation Removed**: Removed the `animate-pulse` class from active habits rendered inside calendar timeline slots to keep the interface calm.
+- **Subtle Habit Glowing Highlight**: Softened the glows and shadows on highlighted habit cards inside the Habit Manager panel (removed scale-105 zoom, reduced ring sizes and blur shadows) to make highlights subtle. The highlight ring dynamically maps to the active theme color (Sage for Forest Moss, Blue/Slate for Nordic Frost, Crimson/Red for Crimson Sand, Orchid/Purple for Royal Orchid) using theme variables.
+- **Specific Time UI Input Field**: Added a new optional **Specific Time** (`time`) field to the Custom Task creator/editor form in the main view, next to the Time Bucket field.
+- **AI Task Parser exact scheduling**: Enhanced the backend prompt in `/api/parse-tasks` to recognize exact task times in the text input and populate the `scheduledTime` field directly in the response. This guarantees that tasks with mentioned times (e.g. "at 14:00") place correctly in the calendar timeline upon parsing.
+- **Removed Selection Toast**: Removed the notification toast alert that triggered when a habit card was clicked in the calendar timeline, providing a smoother redirection.
+
+---
+
+## 🔒 11. Time-Frozen Tasks
+- **Time-Frozen Flag**: Added a `timeFrozen` boolean state/schema parameter to structured tasks (client-side interface and MongoDB database layers).
+- **AI Task Parser Auto-freeze**: The Gemini parser automatically sets `timeFrozen: true` for any task where a specific start time is explicitly mentioned in the parsed user description (e.g. *"Standup meeting at 9:30 AM"*).
+- **AI Scheduler Schedule-around Constraint**: Programmed the `/api/ai-scheduler` Gemini prompt to treat frozen tasks as strict constraints. The scheduler locks their scheduled times and schedules all non-frozen tasks *around* them to avoid overlap.
+- **Local Fallback Scheduler Schedule-around**: Refactored the local scheduling algorithm in `server.ts` to pre-populate frozen tasks at their set times, block those intervals, and shift non-frozen tasks to the remaining free space.
+- **Interactive Calendar Freeze Toggle**: Added a Lock/Unlock button next to the "Re-time" action in the calendar timeline card. Clicking it locks the task at its current slot, showing an amber **Frozen** badge next to its duration.
+- **Manual Form Freeze Checkbox**: Added a **Freeze Time** checkbox to the Custom Task form (auto-selects when a Specific Time is inputted), giving users manual control over scheduling constraints.
+
+
+
+
+

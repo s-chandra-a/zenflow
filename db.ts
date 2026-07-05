@@ -16,7 +16,8 @@ const TaskSchema = new Schema({
   category: { type: String, default: "work" },
   timeOfDay: { type: String, default: "Morning" },
   completed: { type: Boolean, default: false },
-  scheduledTime: { type: String }
+  scheduledTime: { type: String },
+  timeFrozen: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const HabitSchema = new Schema({
@@ -253,7 +254,8 @@ export async function syncTasks(tasks: any[]): Promise<void> {
     category: t.category || "work",
     timeOfDay: t.timeOfDay || "Morning",
     completed: !!t.completed,
-    scheduledTime: t.scheduledTime || undefined
+    scheduledTime: t.scheduledTime || undefined,
+    timeFrozen: !!t.timeFrozen
   }));
 
   if (isMongoConnected) {

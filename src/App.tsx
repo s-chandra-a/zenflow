@@ -103,6 +103,8 @@ export default function App() {
   const [lastRolloverDate, setLastRolloverDate] = useState("");
   const [celebrationEffect, setCelebrationEffect] = useState<{ type: 'streak' | 'perfect-day'; value?: number } | null>(null);
   const [clickedStreakId, setClickedStreakId] = useState<string | null>(null);
+  const [mindHabits, setMindHabits] = useState(() => localStorage.getItem("zen_mind_habits") !== "false");
+  const [highlightedHabitId, setHighlightedHabitId] = useState<string | null>(null);
 
   const checkDbStatus = async () => {
     try {
@@ -430,6 +432,11 @@ export default function App() {
     }
   }, [celebrationEffect]);
 
+  // Sync mindHabits to LocalStorage
+  useEffect(() => {
+    localStorage.setItem("zen_mind_habits", String(mindHabits));
+  }, [mindHabits]);
+
   const handleResetProductivity = async () => {
     setDaysCount(0);
     setTotalCompletedTasks(0);
@@ -580,6 +587,8 @@ export default function App() {
   const [formPeriod, setFormPeriod] = useState<'today' | 'tomorrow'>('today');
   const [formCategory, setFormCategory] = useState("work");
   const [formTimeOfDay, setFormTimeOfDay] = useState("Morning");
+  const [formScheduledTime, setFormScheduledTime] = useState("");
+  const [formTimeFrozen, setFormTimeFrozen] = useState(false);
 
   // Habit Creator / Editor States
   const [isAddingHabit, setIsAddingHabit] = useState(false);
@@ -742,6 +751,21 @@ export default function App() {
     }
   };
 
+  const handleCalendarHabitClick = (habitId: string) => {
+    setRightPanelTab('habits');
+    setHighlightedHabitId(habitId);
+    setTimeout(() => {
+      setHighlightedHabitId(null);
+    }, 3000);
+
+    setTimeout(() => {
+      const cardEl = document.getElementById(`habit-card-${habitId}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  };
+
   const handleJamInToday = (taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => {
@@ -792,49 +816,10 @@ export default function App() {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
-
-      // Habits Trigger check
-      const nowHours = now.getHours().toString().padStart(2, "0");
-      const nowMinutes = now.getMinutes().toString().padStart(2, "0");
-      const currentHM = `${nowHours}:${nowMinutes}`;
-      const todayDate = now.toISOString().split('T')[0];
-
-      habits.forEach((habit) => {
-        if (habit.enabled && habit.time === currentHM) {
-          const targetId = `habit-task-${habit.id}-${todayDate}`;
-          setTasks((prevTasks) => {
-            const alreadyExists = prevTasks.some((t) => t.id === targetId);
-            if (!alreadyExists) {
-              const newTask: Task = {
-                id: targetId,
-                title: `Habit: ${habit.title}`,
-                description: habit.description,
-                duration: habit.duration,
-                priority: "medium",
-                period: "today",
-                category: habit.category,
-                timeOfDay: parseInt(nowHours, 10) < 12 ? "Morning" : parseInt(nowHours, 10) < 17 ? "Afternoon" : "Evening",
-                completed: false,
-                scheduledTime: habit.time,
-              };
-              
-              setTimeout(() => {
-                triggerNotification(
-                  "Habit Activated",
-                  `"${habit.title}" has been added to today's schedule.`,
-                  "info"
-                );
-              }, 0);
-              return [newTask, ...prevTasks];
-            }
-            return prevTasks;
-          });
-        }
-      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [habits]);
+  }, []);
 
   // System notification trigger
   const triggerNotification = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'alert') => {
@@ -884,6 +869,7 @@ export default function App() {
             includeBreaks: schedulerIncludeBreaks,
             mixCategories: schedulerMixCategories,
             context: schedulerContext,
+            mindHabits,
           },
           model: selectedAiModel,
           bypassAI
@@ -1152,7 +1138,7 @@ export default function App() {
       const data = await response.json();
       if (data.tasks && Array.isArray(data.tasks)) {
         const parsedTasks: Task[] = data.tasks.map((t: any, idx: number) => ({
-          id: `task-parsed-${Date.now()}-${idx}`,
+          id: `task-parsed-${Date.now()}-${Math.floor(Math.random() * 1000000)}-${idx}`,
           title: t.title || "Untitled Task",
           description: t.description || "",
           duration: typeof t.duration === "number" ? t.duration : 30,
@@ -1162,6 +1148,7 @@ export default function App() {
           timeOfDay: t.timeOfDay || "Anytime",
           completed: false,
           scheduledTime: t.scheduledTime || (t.timeOfDay === "Morning" ? "09:00" : t.timeOfDay === "Afternoon" ? "14:00" : t.timeOfDay === "Evening" ? "18:00" : "12:00"),
+          timeFrozen: !!t.timeFrozen,
         }));
 
         // Merge or replace tasks based on choice
@@ -1238,6 +1225,23 @@ export default function App() {
     }
   };
 
+  const handleToggleTaskFreeze = (id: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === id) {
+          const nextState = !t.timeFrozen;
+          triggerNotification(
+            nextState ? "Task Time Locked" : "Task Time Unlocked",
+            `"${t.title}" is ${nextState ? "frozen at" : "released from"} ${t.scheduledTime || "12:00"}.`,
+            nextState ? "warning" : "info"
+          );
+          return { ...t, timeFrozen: nextState };
+        }
+        return t;
+      })
+    );
+  };
+
   // Add / Edit Form submission
   const handleSaveTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1257,7 +1261,8 @@ export default function App() {
                 period: formPeriod,
                 category: formCategory,
                 timeOfDay: formTimeOfDay,
-                scheduledTime: t.timeOfDay === formTimeOfDay ? t.scheduledTime : (formTimeOfDay === "Morning" ? "09:00" : formTimeOfDay === "Afternoon" ? "14:00" : formTimeOfDay === "Evening" ? "18:00" : "12:00"),
+                scheduledTime: formScheduledTime || (t.timeOfDay === formTimeOfDay ? t.scheduledTime : (formTimeOfDay === "Morning" ? "09:00" : formTimeOfDay === "Afternoon" ? "14:00" : formTimeOfDay === "Evening" ? "18:00" : "12:00")),
+                timeFrozen: formTimeFrozen,
               }
             : t
         )
@@ -1276,7 +1281,8 @@ export default function App() {
         category: formCategory,
         timeOfDay: formTimeOfDay,
         completed: false,
-        scheduledTime: formTimeOfDay === "Morning" ? "09:00" : formTimeOfDay === "Afternoon" ? "14:00" : formTimeOfDay === "Evening" ? "18:00" : "12:00",
+        scheduledTime: formScheduledTime || (formTimeOfDay === "Morning" ? "09:00" : formTimeOfDay === "Afternoon" ? "14:00" : formTimeOfDay === "Evening" ? "18:00" : "12:00"),
+        timeFrozen: formTimeFrozen,
       };
       setTasks((prev) => [newTask, ...prev]);
       triggerNotification("Task Created", `"${formTitle}" added to your ${formPeriod} list.`, "success");
@@ -1290,6 +1296,8 @@ export default function App() {
     setFormPriority("medium");
     setFormCategory("work");
     setFormTimeOfDay("Morning");
+    setFormScheduledTime("");
+    setFormTimeFrozen(false);
   };
 
   const handleStartEdit = (task: Task) => {
@@ -1301,6 +1309,8 @@ export default function App() {
     setFormPeriod(task.period);
     setFormCategory(task.category);
     setFormTimeOfDay(task.timeOfDay);
+    setFormScheduledTime(task.scheduledTime || "");
+    setFormTimeFrozen(!!task.timeFrozen);
   };
 
   // Progress & Stats Metrics
@@ -1676,6 +1686,25 @@ export default function App() {
                           </div>
                         </div>
 
+                        {/* Mind Habits Option */}
+                        <div className="flex items-start gap-2.5">
+                          <input
+                            type="checkbox"
+                            id="schedule-mind-habits"
+                            checked={mindHabits}
+                            onChange={(e) => setMindHabits(e.target.checked)}
+                            className="mt-1 w-3.5 h-3.5 text-sage-600 border-nature-300 rounded focus:ring-sage-500 cursor-pointer"
+                          />
+                          <div className="text-left">
+                            <label htmlFor="schedule-mind-habits" className="text-xs font-bold text-nature-850 dark:text-nature-150 block cursor-pointer select-none">
+                              Mind habits in schedule
+                            </label>
+                            <span className="text-[10px] text-nature-450 dark:text-nature-400 leading-tight block">
+                              Leave gaps in the calendar and render translucent habit blocks.
+                            </span>
+                          </div>
+                        </div>
+
                         {/* User custom context */}
                         <div className="space-y-1">
                           <label className="text-[9px] uppercase font-bold text-nature-450 dark:text-nature-400 font-mono block">
@@ -1802,7 +1831,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Priority</label>
                       <select
@@ -1841,6 +1870,34 @@ export default function App() {
                         <option value="Evening">Evening</option>
                         <option value="Anytime">Anytime</option>
                       </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Specific Time</label>
+                      <input
+                        type="time"
+                        value={formScheduledTime}
+                        onChange={(e) => {
+                          setFormScheduledTime(e.target.value);
+                          if (e.target.value) setFormTimeFrozen(true);
+                        }}
+                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-850 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 flex flex-col justify-end">
+                      <div className="flex items-center gap-2 h-[38px] pb-2">
+                        <input
+                          type="checkbox"
+                          id="formTimeFrozen"
+                          checked={formTimeFrozen}
+                          onChange={(e) => setFormTimeFrozen(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-sage-600 border-nature-300 focus:ring-sage-500 cursor-pointer"
+                        />
+                        <label htmlFor="formTimeFrozen" className="text-xs font-bold text-nature-750 dark:text-nature-200 cursor-pointer select-none">
+                          Freeze Time
+                        </label>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -2027,6 +2084,10 @@ export default function App() {
                   onUpdateTaskTime={handleUpdateTaskTime}
                   onSelectTaskWorkflow={handleSelectWorkflowTask}
                   onToggleComplete={handleToggleComplete}
+                  onToggleFreeze={handleToggleTaskFreeze}
+                  habits={habits}
+                  mindHabits={mindHabits}
+                  onHabitClick={handleCalendarHabitClick}
                 />
               ) : (
                 /* Kanban List Column View */
@@ -2304,8 +2365,11 @@ export default function App() {
                       return (
                         <div
                           key={habit.id}
-                          className={`p-3 rounded-xl border transition-all duration-200 text-left ${
-                            !habit.enabled
+                          id={`habit-card-${habit.id}`}
+                          className={`p-3 rounded-xl border transition-all duration-200 text-left relative ${
+                            highlightedHabitId === habit.id
+                              ? "ring-1 ring-sage-500/50 shadow-sm border-sage-400 z-10"
+                              : !habit.enabled
                               ? "bg-nature-50/40 dark:bg-nature-950/20 border-nature-200 dark:border-nature-850 opacity-60"
                               : isCompleted
                               ? "bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-200/50 dark:border-emerald-900/30"

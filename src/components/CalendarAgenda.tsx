@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Task } from "../types";
-import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight } from "lucide-react";
+import { Task, Habit } from "../types";
+import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock } from "lucide-react";
 import { motion } from "motion/react";
 
 interface CalendarAgendaProps {
@@ -9,6 +9,10 @@ interface CalendarAgendaProps {
   onUpdateTaskTime: (id: string, time: string) => void;
   onSelectTaskWorkflow: (task: Task) => void;
   onToggleComplete: (id: string) => void;
+  onToggleFreeze?: (id: string) => void;
+  habits?: Habit[];
+  mindHabits?: boolean;
+  onHabitClick?: (habitId: string) => void;
 }
 
 const TIME_BUCKETS = [
@@ -51,6 +55,10 @@ export default function CalendarAgenda({
   onUpdateTaskTime,
   onSelectTaskWorkflow,
   onToggleComplete,
+  onToggleFreeze,
+  habits = [],
+  mindHabits = false,
+  onHabitClick,
 }: CalendarAgendaProps) {
   const filteredTasks = tasks.filter((t) => t.period === period);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -105,6 +113,22 @@ export default function CalendarAgenda({
     return "09:00"; // fallback
   };
 
+  const getHabitsForBucket = (hrValue: string): Habit[] => {
+    if (!mindHabits || period === 'yesterday') return [];
+    
+    const [hrH, hrM] = hrValue.split(":").map(Number);
+    const hrMin = hrH * 60 + hrM;
+
+    return habits.filter((h) => {
+      if (!h.enabled) return false;
+      const [hH, hM] = h.time.split(":").map(Number);
+      const hStartMin = hH * 60 + hM;
+      const hEndMin = hStartMin + h.duration;
+      
+      return hrMin >= hStartMin && hrMin < hEndMin;
+    });
+  };
+
   return (
     <div className="bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/85 dark:border-nature-800 p-5 shadow-xs" id="calendar-agenda-root">
       <div className="flex items-center justify-between mb-6">
@@ -121,8 +145,8 @@ export default function CalendarAgenda({
 
       <div className="relative border-l border-nature-200 dark:border-nature-800 ml-4 pl-6 space-y-6">
         {TIME_BUCKETS.map((hr) => {
-          // Find tasks that fall in this hour bucket
           const hourTasks = filteredTasks.filter((t) => getTaskTimeBucket(t) === hr.value);
+          const bucketHabits = getHabitsForBucket(hr.value);
 
           return (
             <div key={hr.value} className="relative group" id={`agenda-hour-${hr.value}`}>
@@ -136,7 +160,47 @@ export default function CalendarAgenda({
 
                 {/* Tasks slotted at this hour */}
                 <div className="flex-1 space-y-2.5">
-                  {hourTasks.length === 0 ? (
+                  {bucketHabits.map((habit) => {
+                    const getHabitDay = (d: Date) => {
+                      const adj = new Date(d.getTime());
+                      if (adj.getHours() < 8) {
+                        adj.setDate(adj.getDate() - 1);
+                      }
+                      return adj.toISOString().split("T")[0];
+                    };
+                    const habitTodayStr = getHabitDay(new Date());
+                    const isCompleted = habit.lastCompletedDate === habitTodayStr;
+
+                    return (
+                      <div
+                        key={`bucket-habit-${habit.id}-${hr.value}`}
+                        onClick={() => onHabitClick && onHabitClick(habit.id)}
+                        className={`p-3 rounded-xl border border-dashed transition-all duration-200 cursor-pointer select-none backdrop-blur-xs flex items-center justify-between gap-3 ${
+                          isCompleted
+                            ? "bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-300/30 text-emerald-700 dark:text-emerald-450 opacity-60"
+                            : "bg-sage-50/30 dark:bg-sage-950/10 border-sage-300/40 hover:border-sage-400 dark:hover:border-sage-600 text-sage-800 dark:text-sage-300"
+                        }`}
+                        title="Active Habit Routine. Click to view in manager."
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse" />
+                          <div>
+                            <h5 className="text-xs font-bold font-sans tracking-wide">
+                              🔁 {habit.title}
+                            </h5>
+                            <p className="text-[10px] opacity-75 mt-0.5">
+                              Habit routine ({habit.duration} mins)
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-sage-100/50 dark:bg-sage-900/50">
+                          {habit.time}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {hourTasks.length === 0 && bucketHabits.length === 0 ? (
                     <div className="text-[11px] text-nature-400 dark:text-nature-500 italic py-1 hover:text-nature-600 dark:hover:text-nature-300 transition-colors flex items-center gap-1.5">
                       No events scheduled
                     </div>
@@ -184,6 +248,11 @@ export default function CalendarAgenda({
                                   <Clock className="w-3 h-3 text-sage-500" />
                                   {task.duration}m
                                 </span>
+                                {task.timeFrozen && (
+                                  <span className="flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold uppercase flex items-center">
+                                    <Lock className="w-2.5 h-2.5" /> Frozen
+                                  </span>
+                                )}
                                 <span
                                   className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-md font-bold ${
                                     task.priority === "high"
@@ -222,13 +291,26 @@ export default function CalendarAgenda({
                                 ))}
                               </select>
                             ) : (
-                              <button
-                                onClick={() => setEditingTaskId(task.id)}
-                                className="text-[10px] font-mono px-2 py-0.5 bg-nature-100 dark:bg-nature-800 hover:bg-nature-200 dark:hover:bg-nature-700 text-nature-600 dark:text-nature-300 hover:text-nature-800 dark:hover:text-white rounded-md transition-colors cursor-pointer"
-                                title="Reschedule hour"
-                              >
-                                Re-time
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => onToggleFreeze && onToggleFreeze(task.id)}
+                                  className={`p-1 rounded-lg border transition-all duration-150 flex items-center justify-center cursor-pointer ${
+                                    task.timeFrozen
+                                      ? "bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-200"
+                                      : "bg-nature-100 dark:bg-nature-800 border-nature-200 dark:border-nature-700 text-nature-600 dark:text-nature-450 hover:bg-nature-200"
+                                  }`}
+                                  title={task.timeFrozen ? "Time Frozen. Click to Unfreeze." : "Freeze Time (AI scheduler won't reschedule this)"}
+                                >
+                                  {task.timeFrozen ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                </button>
+                                <button
+                                  onClick={() => setEditingTaskId(task.id)}
+                                  className="text-[10px] font-mono px-2 py-0.5 bg-nature-100 dark:bg-nature-800 hover:bg-nature-200 dark:hover:bg-nature-700 text-nature-600 dark:text-nature-300 hover:text-nature-800 dark:hover:text-white rounded-md transition-colors cursor-pointer"
+                                  title="Reschedule hour"
+                                >
+                                  Re-time
+                                </button>
+                              </>
                             )}
                             <button
                               onClick={() => onSelectTaskWorkflow(task)}

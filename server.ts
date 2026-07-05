@@ -284,6 +284,8 @@ For each task, provide:
 - "period": 'today' or 'tomorrow' based on the text. If not specified, default to 'today'.
 - "category": 'work', 'personal', 'health', 'learning', or 'other'.
 - "timeOfDay": estimated time or period of day (e.g. "9:00 AM", "Morning", "Afternoon", "Evening", "Anytime").
+- "scheduledTime": an optional string representing the exact start time in 24-hour HH:MM format (e.g., "14:00", "09:30") if a specific time is mentioned in the user's text. If no specific time is mentioned, set it to null.
+- "timeFrozen": a boolean (true or false). Set to true ONLY if a specific exact start time is explicitly mentioned in the user's text (e.g. "at 2 PM", "at 10:30 AM"). Otherwise, set it to false.
 
 User text:
 """
@@ -402,6 +404,7 @@ app.post("/api/ai-scheduler", async (req, res) => {
     const includeBreaks = options?.includeBreaks ?? true;
     const mixCategories = options?.mixCategories ?? false;
     const context = options?.context ?? "";
+    const mindHabits = options?.mindHabits ?? false;
 
     try {
       if (bypassAI) {
@@ -422,17 +425,18 @@ app.post("/api/ai-scheduler", async (req, res) => {
 Your goal is to schedule the user's tasks starting from ${scheduleStartTime} and finishing by 11:00 PM (23:00) ${targetDayText}.
 
 Input Tasks to schedule:
-${JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description || "", duration: t.duration, priority: t.priority, category: t.category || "work" })), null, 2)}
+${JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description || "", duration: t.duration, priority: t.priority, category: t.category || "work", scheduledTime: t.scheduledTime, timeFrozen: t.timeFrozen || false })), null, 2)}
 
-User's Habits (refer to these to avoid scheduling tasks directly on top of habit times if the habit is enabled):
+User's Habits (${mindHabits ? "CRITICAL: Do NOT schedule any tasks during these habit times. Keep these slots blank to leave gaps for these habits" : "You can ignore these habit times when scheduling tasks"}):
 ${JSON.stringify((habits || []).filter((h: any) => h.enabled).map((h: any) => ({ title: h.title, time: h.time, duration: h.duration })), null, 2)}
 
 Scheduling Guidelines:
 1. TASK DURATION AWARENESS (CRITICAL):
    - You MUST ensure tasks do NOT overlap in time.
    - For example, if a task starts at 09:00 and its duration is 180 minutes (3 hours), the next scheduled task can start no earlier than 12:00. Use their "duration" (in minutes) to calculate subsequent start times accurately.
-2. SCHEDULER OPTIONS & BREAKS:
-   - Include breaks / gaps: ${includeBreaks ? "YES. You MUST ensure that you NEVER schedule consecutive tasks without a blank space in between. Leave a blank gap of at least 30 minutes between EVERY consecutive pair of tasks. E.g. if Task 1 ends at 10:00, Task 2 can start no earlier than 10:30." : "NO. Schedule tasks back-to-back where possible."}
+2. SCHEDULER OPTIONS, BREAKS & HABITS:
+   - Mind habits: ${mindHabits ? "YES (CRITICAL). Do NOT schedule any tasks that overlap with the active habit times listed above. Keep those times free on the calendar view." : "NO. You can schedule tasks at these times."}
+   - Include breaks / gaps: ${includeBreaks ? "YES. You MUST ensure that you NEVER schedule consecutive tasks without a blank space in between. Leave a blank gap of at least 30 minutes between EVERY consecutive pair of tasks. E.g. if Task 1 ends at 10:00, Task 2 can start no earlier than 10:30." : "NO. Schedule tasks back-to-back where possible (except when avoiding habit times)."}
    - No dummy break tasks: Do NOT output any "Break & stretch" or dummy filler tasks. Just leave those slots empty on the calendar by adjusting the tasks' "scheduledTime" values.
    - Mix categories: ${mixCategories ? "YES. Try to alternate tasks between different categories (e.g., mix work, personal, study, health) rather than grouping all tasks of the same category together." : "NO. You can group similar category tasks together."}
    - User custom context: ${context || "None provided."}
@@ -440,6 +444,9 @@ ${overflowGuideline}
 4. CALENDAR CONSTRAINTS:
    - Assign each successfully scheduled task a valid 'scheduledTime' in 24-hour format "HH:MM" (e.g. "09:30", "14:15", "18:00").
    - Reschedule tasks to make the day productive. Adjust their priorities ('high', 'medium', 'low') based on their urgency.
+5. TIME-FROZEN TASKS (CRITICAL CONSTRAINT):
+   - Any input task marked with "timeFrozen": true MUST remain scheduled at its pre-existing "scheduledTime" (HH:MM). You MUST NOT shift its start time or duration or modify its period.
+   - You MUST schedule all other tasks *around* these time-frozen tasks to avoid timeline overlaps.
 
 Return a JSON object containing a "scheduledTasks" array and an empty "newBreaks" array.
 Return ONLY a valid JSON object matching this structure:
@@ -1143,18 +1150,64 @@ function getLocalPrioritization(tasks: any[]) {
 }
 
 function getLocalScheduling(tasks: any[], habits: any[], options: any) {
-  const sortedTasks = [...tasks].sort((a, b) => {
+  const timeFrozenTasks = tasks.filter(t => t.timeFrozen && t.scheduledTime);
+  const nonFrozenTasks = tasks.filter(t => !(t.timeFrozen && t.scheduledTime));
+
+  const sortedNonFrozen = [...nonFrozenTasks].sort((a, b) => {
     const priorityWeight = { high: 3, medium: 2, low: 1 };
     return (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
   });
 
-  const scheduledTasks = [];
+  const scheduledTasks: any[] = [];
   const newBreaks: any[] = [];
-  
+
+  // Pre-schedule frozen tasks
+  timeFrozenTasks.forEach(ft => {
+    scheduledTasks.push({
+      id: ft.id,
+      scheduledTime: ft.scheduledTime,
+      priority: ft.priority,
+      period: ft.period
+    });
+  });
+
+  const activeHabits = (habits || []).filter(h => h.enabled).map(h => {
+    const [hh, mm] = h.time.split(":").map(Number);
+    const start = hh * 60 + mm;
+    return { start, end: start + h.duration };
+  });
+
+  const blockedBlocks = [
+    ...activeHabits,
+    ...timeFrozenTasks.map(ft => {
+      const [hh, mm] = ft.scheduledTime.split(":").map(Number);
+      const start = hh * 60 + mm;
+      return { start, end: start + ft.duration };
+    })
+  ];
+
   let currentMinutes = 480; // 8:00 AM
-  
-  for (let i = 0; i < sortedTasks.length; i++) {
-    const task = sortedTasks[i];
+
+  for (let i = 0; i < sortedNonFrozen.length; i++) {
+    const task = sortedNonFrozen[i];
+    
+    // Shift currentMinutes past any blocked blocks (habits or frozen tasks)
+    let shifted = true;
+    while (shifted) {
+      shifted = false;
+      for (const block of blockedBlocks) {
+        const taskStart = currentMinutes;
+        const taskEnd = currentMinutes + task.duration;
+        if ((taskStart >= block.start && taskStart < block.end) || 
+            (taskEnd > block.start && taskEnd <= block.end) ||
+            (block.start >= taskStart && block.end <= taskEnd)) {
+          currentMinutes = block.end;
+          shifted = true;
+          break;
+        }
+      }
+    }
+
     const hours = Math.floor(currentMinutes / 60);
     const mins = currentMinutes % 60;
     const hhmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
@@ -1162,14 +1215,14 @@ function getLocalScheduling(tasks: any[], habits: any[], options: any) {
     scheduledTasks.push({
       id: task.id,
       scheduledTime: hhmm,
-      priority: task.priority
+      priority: task.priority,
+      period: task.period
     });
     
     currentMinutes += task.duration;
     
-    // If includeBreaks is enabled, insert a 30-minute blank gap between every single task
-    if (options?.includeBreaks && i < sortedTasks.length - 1) {
-      currentMinutes += 30; // 30-minute blank gap
+    if (options?.includeBreaks && i < sortedNonFrozen.length - 1) {
+      currentMinutes += 30;
     }
   }
 

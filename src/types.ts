@@ -9,6 +9,7 @@ export interface Task {
   timeOfDay: string; // e.g., "10:00 AM", "Afternoon"
   completed: boolean;
   scheduledTime?: string; // ISO date string or HH:MM format
+  timeFrozen?: boolean;
 }
 
 export interface WorkflowStep {
