@@ -44,10 +44,12 @@ export default function App() {
   const [selectedWorkflowTask, setSelectedWorkflowTask] = useState<Task | null>(null);
   const [activePeriod, setActivePeriod] = useState<'today' | 'tomorrow' | 'yesterday'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'focus' | 'habits' | 'tracker'>('habits');
+  const [activeMobileTab, setActiveMobileTab] = useState<'tasks' | 'focus' | 'habits' | 'input' | 'scorecard'>('tasks');
 
   const handleSelectWorkflowTask = (task: Task) => {
     setSelectedWorkflowTask(task);
     setRightPanelTab('focus');
+    setActiveMobileTab('focus');
   };
 
   // Token Meter States & Quota limits
@@ -753,6 +755,7 @@ export default function App() {
 
   const handleCalendarHabitClick = (habitId: string) => {
     setRightPanelTab('habits');
+    setActiveMobileTab('habits');
     setHighlightedHabitId(habitId);
     setTimeout(() => {
       setHighlightedHabitId(null);
@@ -1298,6 +1301,7 @@ export default function App() {
     setFormTimeOfDay("Morning");
     setFormScheduledTime("");
     setFormTimeFrozen(false);
+    setActiveMobileTab('tasks');
   };
 
   const handleStartEdit = (task: Task) => {
@@ -1311,6 +1315,7 @@ export default function App() {
     setFormTimeOfDay(task.timeOfDay);
     setFormScheduledTime(task.scheduledTime || "");
     setFormTimeFrozen(!!task.timeFrozen);
+    setActiveMobileTab('input');
   };
 
   // Progress & Stats Metrics
@@ -1337,23 +1342,23 @@ export default function App() {
       <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] rounded-full bg-nature-300/20 blur-[130px] pointer-events-none" />
 
       {/* Header Bar */}
-      <header className="border-b border-nature-200 dark:border-nature-800 bg-white/90 dark:bg-nature-900/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-xs transition-colors duration-300">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sage-600 flex items-center justify-center shadow-md shadow-sage-600/15">
-            <Sparkles className="w-5 h-5 text-white" />
+      <header className="border-b border-nature-200 dark:border-nature-800 bg-white/90 dark:bg-nature-900/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between shadow-xs transition-colors duration-300">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-sage-600 flex items-center justify-center shadow-md shadow-sage-600/15 shrink-0">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-black tracking-tight text-nature-950 dark:text-nature-50">
+            <h1 className="text-xs sm:text-sm font-black tracking-tight text-nature-950 dark:text-nature-50">
               ZEN FLOW
             </h1>
-            <p className="text-[10px] text-sage-600 font-bold uppercase tracking-wider font-mono">
+            <p className="text-[9px] sm:text-[10px] text-sage-600 font-bold uppercase tracking-wider font-mono">
               AI-Powered Scheduler
             </p>
           </div>
         </div>
 
         {/* Dynamic Clock and Control Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="hidden md:flex flex-col items-end pr-4 border-r border-nature-200 dark:border-nature-800">
             <span className="text-xs font-mono font-bold text-nature-800 dark:text-nature-200">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -1372,11 +1377,11 @@ export default function App() {
           />
 
           {/* Custom Theme Selector Dropdown */}
-          <div className="relative">
+          <div className="relative max-w-[44px] sm:max-w-none">
             <select
               value={themeOption}
               onChange={(e) => setThemeOption(e.target.value as any)}
-              className={`p-2 pr-8 pl-9 rounded-xl border appearance-none font-mono text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-sage-500/50 ${
+              className={`p-2 pr-2 sm:pr-8 pl-8 sm:pl-9 rounded-xl border appearance-none font-mono text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-sage-500/50 w-11 sm:w-auto text-transparent sm:text-inherit overflow-hidden ${
                 isDarkMode
                   ? "bg-nature-850 border-nature-750 text-nature-150 hover:bg-nature-800"
                   : "bg-nature-50 border-nature-250 text-nature-800 hover:bg-nature-100"
@@ -1388,11 +1393,11 @@ export default function App() {
               <option value="crimson">🌶️ Crimson Sand</option>
               <option value="orchid">🌸 Royal Orchid</option>
             </select>
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               <Palette className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400" />
             </div>
             {/* Custom arrow down */}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-nature-400 dark:text-nature-500 text-[9px]">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-nature-400 dark:text-nature-500 text-[9px] hidden sm:block">
               ▼
             </div>
           </div>
@@ -1413,13 +1418,13 @@ export default function App() {
       </header>
 
       {/* Primary Layout Wrapper */}
-      <main className="flex-1 flex flex-col lg:flex-row h-full max-w-[1600px] mx-auto w-full p-4 md:p-6 gap-6 relative">
+      <main className="flex-1 flex flex-col lg:flex-row h-full max-w-[1600px] mx-auto w-full p-4 md:p-6 pb-28 lg:pb-6 gap-6 relative">
         
         {/* Left Column: Input and Schedule Control */}
-        <div className="flex-1 flex flex-col space-y-6 min-w-0">
+        <div className={`flex-1 flex flex-col space-y-6 min-w-0 ${activeMobileTab === 'tasks' || activeMobileTab === 'input' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* AI Parser Area */}
-          <div className="bg-white dark:bg-nature-900 border border-nature-200/80 dark:border-nature-800 rounded-2xl p-5 shadow-xs transition-colors duration-300" id="ai-parser-section">
+          <div className={`bg-white dark:bg-nature-900 border border-nature-200/80 dark:border-nature-800 rounded-2xl p-5 shadow-xs transition-colors duration-300 ${activeMobileTab === 'input' ? 'block' : 'hidden lg:block'}`} id="ai-parser-section">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4.5 h-4.5 text-sage-600" />
@@ -1527,7 +1532,7 @@ export default function App() {
           </div>
 
           {/* Task Completion Progress Bar Card */}
-          <div className="bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/80 dark:border-nature-800 p-5 shadow-xs mb-2 transition-colors duration-300">
+          <div className={`bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/80 dark:border-nature-800 p-5 shadow-xs mb-2 transition-colors duration-300 ${activeMobileTab === 'tasks' ? 'block' : 'hidden lg:block'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-nature-800 dark:text-nature-100 flex items-center gap-1.5">
@@ -1573,7 +1578,7 @@ export default function App() {
           </div>
 
           {/* Schedule Board Header and Views Controller */}
-          <div className="flex flex-col space-y-4">
+          <div className={`flex flex-col space-y-4 ${activeMobileTab === 'tasks' ? 'block' : 'hidden lg:block'}`}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               {/* Period Select Tabs */}
               <div className="flex bg-nature-200/60 p-1 rounded-xl border border-nature-300/40 self-start">
@@ -1738,8 +1743,13 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={() => setIsAddingTask(!isAddingTask)}
-                  className="p-2 bg-nature-100 hover:bg-nature-200/80 border border-nature-300 rounded-xl text-nature-700 hover:text-nature-900 transition-all flex items-center gap-1.5 text-xs font-bold"
+                  onClick={() => {
+                    setIsAddingTask(!isAddingTask);
+                    if (!isAddingTask) {
+                      setActiveMobileTab('input');
+                    }
+                  }}
+                  className="p-2 bg-nature-100 hover:bg-nature-200/80 border border-nature-300 rounded-xl text-nature-700 hover:text-nature-900 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                   id="add-task-toggle-btn"
                 >
                   <Plus className="w-4 h-4" />
@@ -1788,8 +1798,9 @@ export default function App() {
                       onClick={() => {
                         setIsAddingTask(false);
                         setEditingTask(null);
+                        setActiveMobileTab('tasks');
                       }}
-                      className="text-nature-400 hover:text-nature-600 dark:hover:text-nature-200"
+                      className="text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -2152,10 +2163,10 @@ export default function App() {
         </div>
 
         {/* Right Column: Focus and Workflow panel / Habits Manager Cockpit */}
-        <div className="w-full lg:w-[420px] xl:w-[480px] shrink-0 relative" id="right-workflow-panel">
+        <div className={`w-full lg:w-[420px] xl:w-[480px] shrink-0 relative ${activeMobileTab === 'focus' || activeMobileTab === 'habits' || activeMobileTab === 'scorecard' ? 'block' : 'hidden lg:block'}`} id="right-workflow-panel">
           <div className="lg:sticky lg:top-[80px] lg:max-h-[calc(100vh-96px)] h-auto lg:h-[calc(100vh-96px)] overflow-visible lg:overflow-hidden rounded-2xl border border-nature-200 dark:border-nature-800 bg-white dark:bg-nature-900 flex flex-col shadow-lg transition-colors duration-300">
             {/* Header Tabs */}
-            <div className="flex border-b border-nature-150 dark:border-nature-855 bg-nature-50/50 dark:bg-nature-950/20 p-2 gap-1 rounded-t-2xl shrink-0">
+            <div className="hidden lg:flex border-b border-nature-150 dark:border-nature-855 bg-nature-50/50 dark:bg-nature-950/20 p-2 gap-1 rounded-t-2xl shrink-0">
               <button
                 onClick={() => setRightPanelTab('focus')}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -2592,7 +2603,7 @@ export default function App() {
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 left-6 z-50 p-4 rounded-xl shadow-2xl border border-nature-200 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md max-w-sm flex gap-3.5"
+            className="fixed bottom-24 left-4 right-4 lg:bottom-6 lg:left-6 lg:right-auto lg:max-w-sm z-50 p-4 rounded-xl shadow-2xl border border-nature-200 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md flex gap-3.5"
             id="toast-notification-banner"
           >
             <div className="shrink-0 mt-0.5">
@@ -2621,7 +2632,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating Google AI Studio Quota Monitor popover (Bottom-Right) */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40">
         <button
           onClick={() => setShowQuotaPopover(!showQuotaPopover)}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border shadow-lg transition-all duration-305 font-mono text-[11px] font-bold cursor-pointer ${
@@ -2829,7 +2840,7 @@ export default function App() {
                   100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
                 }
               `}</style>
-              {/* Confetti particles */}
+          {/* Confetti particles */}
               {Array.from({ length: 60 }).map((_, i) => {
                 const size = Math.random() * 8 + 6;
                 const delay = Math.random() * 2;
@@ -2854,6 +2865,85 @@ export default function App() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Mobile Floating Bottom Navigation */}
+        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50 flex justify-center">
+          <div className="w-full max-w-md bg-white/80 dark:bg-nature-900/80 backdrop-blur-lg border border-nature-200/80 dark:border-nature-800/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
+            {/* Tasks Tab */}
+            <button
+              onClick={() => setActiveMobileTab('tasks')}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'tasks'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <List className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Tasks</span>
+            </button>
+
+            {/* Focus Tab */}
+            <button
+              onClick={() => {
+                setActiveMobileTab('focus');
+                setRightPanelTab('focus');
+              }}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'focus'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <Play className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Focus</span>
+            </button>
+
+            {/* Habits Tab */}
+            <button
+              onClick={() => {
+                setActiveMobileTab('habits');
+                setRightPanelTab('habits');
+              }}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'habits'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <Clock className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Habits</span>
+            </button>
+
+            {/* Dump / Input Tab */}
+            <button
+              onClick={() => setActiveMobileTab('input')}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'input'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Add</span>
+            </button>
+
+            {/* Scorecard Tab */}
+            <button
+              onClick={() => {
+                setActiveMobileTab('scorecard');
+                setRightPanelTab('tracker');
+              }}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'scorecard'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Stats</span>
+            </button>
+          </div>
+        </div>
 
       </div>
     </div>
