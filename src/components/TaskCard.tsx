@@ -70,7 +70,7 @@ export default function TaskCard({
       }`}
       id={`task-card-${task.id}`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
         {/* Checkbox and Text */}
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <button
@@ -133,43 +133,45 @@ export default function TaskCard({
         </div>
 
         {/* Hover Controls */}
-        <div className="flex items-center gap-1.5 shrink-0 opacity-85 group-hover:opacity-100 transition-opacity">
-          {task.period !== "yesterday" && (
+        <div className="flex items-center justify-between lg:justify-start lg:items-center gap-1.5 w-full lg:w-auto mt-3 lg:mt-0 pt-2.5 lg:pt-0 border-t border-nature-100/70 dark:border-nature-850/70 lg:border-t-0 opacity-95 lg:opacity-85 lg:group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-4 lg:gap-1.5">
+            {task.period !== "yesterday" && (
+              <button
+                onClick={() => onMigrateTask(task.id, "back")}
+                className="p-2.5 lg:p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
+                title={`Move to ${task.period === 'tomorrow' ? 'Today' : 'Yesterday'}`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
             <button
-              onClick={() => onMigrateTask(task.id, "back")}
-              className="p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
-              title={`Move to ${task.period === 'tomorrow' ? 'Today' : 'Yesterday'}`}
+              onClick={() => onEditTask(task)}
+              className="p-2.5 lg:p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
+              title="Edit task"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <Edit3 className="w-4 h-4" />
             </button>
-          )}
-          <button
-            onClick={() => onEditTask(task)}
-            className="p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
-            title="Edit task"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDeleteTask(task.id)}
-            className="p-1.5 rounded-lg text-nature-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-            title="Delete task"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-          {task.period !== "tomorrow" && (
             <button
-              onClick={() => onMigrateTask(task.id, "forth")}
-              className="p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
-              title={`Move to ${task.period === 'yesterday' ? 'Today' : 'Tomorrow'}`}
+              onClick={() => onDeleteTask(task.id)}
+              className="p-2.5 lg:p-1.5 rounded-lg text-nature-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              title="Delete task"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </button>
-          )}
+            {task.period !== "tomorrow" && (
+              <button
+                onClick={() => onMigrateTask(task.id, "forth")}
+                className="p-2.5 lg:p-1.5 rounded-lg text-nature-400 hover:text-nature-700 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer"
+                title={`Move to ${task.period === 'yesterday' ? 'Today' : 'Tomorrow'}`}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           {!task.completed && (
             <button
               onClick={() => onSelectWorkflow(task)}
-              className="p-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+              className="px-3.5 py-2 lg:px-2.5 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all flex items-center gap-1 text-[11px] font-bold cursor-pointer"
               title="Start guided workflow"
             >
               <span>Focus</span>

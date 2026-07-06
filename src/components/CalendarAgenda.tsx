@@ -329,13 +329,13 @@ export default function CalendarAgenda({
                               : "bg-white dark:bg-nature-900 border-nature-200 dark:border-nature-800 hover:border-nature-300 dark:hover:border-nature-750 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
                           }`}
                         >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                           <div className="flex items-start gap-2.5 flex-1 min-w-0">
                             <button
                               onClick={() => onToggleComplete(task.id)}
                               className={`mt-0.5 rounded-full p-0.5 transition-colors cursor-pointer ${
                                 task.completed
-                                  ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/30"
+                                  ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-455 border border-emerald-100 dark:border-emerald-900/30"
                                   : "text-nature-400 dark:text-nature-500 hover:text-nature-600 dark:hover:text-nature-300"
                               }`}
                             >
@@ -367,7 +367,7 @@ export default function CalendarAgenda({
                                   {task.description}
                                 </p>
                               )}
-                              <div className="flex items-center gap-2 mt-2">
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
                                 <span className="flex items-center gap-1 text-[11px] font-mono text-nature-500 dark:text-nature-400">
                                   <Clock className="w-3 h-3 text-sage-500" />
                                   {task.duration}m
@@ -401,51 +401,54 @@ export default function CalendarAgenda({
                           </div>
 
                           {/* Quick Workflow Action */}
-                          <div className="flex items-center gap-1 shrink-0 self-center">
-                            {editingTaskId === task.id ? (
-                              <select
-                                value={getTaskTimeBucket(task)}
-                                onChange={(e) => {
-                                  onUpdateTaskTime(task.id, e.target.value);
-                                  setEditingTaskId(null);
-                                }}
-                                className="text-[10px] font-mono bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded px-1.5 py-0.5 text-nature-800 dark:text-nature-200"
-                                onBlur={() => setEditingTaskId(null)}
-                                autoFocus
-                              >
-                                {TIME_BUCKETS.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => onToggleFreeze && onToggleFreeze(task.id)}
-                                  className={`p-1 rounded-lg border transition-all duration-150 flex items-center justify-center cursor-pointer ${
-                                    task.timeFrozen
-                                      ? "bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-200"
-                                      : "bg-nature-100 dark:bg-nature-800 border-nature-200 dark:border-nature-700 text-nature-600 dark:text-nature-450 hover:bg-nature-200"
-                                  }`}
-                                  title={task.timeFrozen ? "Time Frozen. Click to Unfreeze." : "Freeze Time (AI scheduler won't reschedule this)"}
+                          <div className="flex items-center justify-between lg:justify-end lg:items-center gap-2 w-full lg:w-auto mt-3 lg:mt-0 pt-2 lg:pt-0 border-t border-nature-100/60 dark:border-nature-800/60 lg:border-t-0 opacity-90 lg:opacity-85 lg:group-hover/card:opacity-100 transition-all">
+                            <div className="flex items-center gap-4 lg:gap-1.5">
+                              {editingTaskId === task.id ? (
+                                <select
+                                  value={getTaskTimeBucket(task)}
+                                  onChange={(e) => {
+                                    onUpdateTaskTime(task.id, e.target.value);
+                                    setEditingTaskId(null);
+                                  }}
+                                  className="text-[11px] font-mono bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-lg px-2.5 py-1 text-nature-800 dark:text-nature-200 focus:ring-1 focus:ring-sage-500"
+                                  onBlur={() => setEditingTaskId(null)}
+                                  autoFocus
                                 >
-                                  {task.timeFrozen ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                                </button>
-                                <button
-                                  onClick={() => setEditingTaskId(task.id)}
-                                  className="text-[10px] font-mono px-2 py-0.5 bg-nature-100 dark:bg-nature-800 hover:bg-nature-200 dark:hover:bg-nature-700 text-nature-600 dark:text-nature-300 hover:text-nature-800 dark:hover:text-white rounded-md transition-colors cursor-pointer"
-                                  title="Reschedule hour"
-                                >
-                                  Re-time
-                                </button>
-                              </>
-                            )}
+                                  {TIME_BUCKETS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => onToggleFreeze && onToggleFreeze(task.id)}
+                                    className={`p-2.5 lg:p-1.5 rounded-lg border transition-all duration-150 flex items-center justify-center cursor-pointer ${
+                                      task.timeFrozen
+                                        ? "bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-200"
+                                        : "bg-nature-100 dark:bg-nature-800 border-nature-200 dark:border-nature-700 text-nature-600 dark:text-nature-455 hover:bg-nature-200"
+                                    }`}
+                                    title={task.timeFrozen ? "Time Frozen. Click to Unfreeze." : "Freeze Time"}
+                                  >
+                                    {task.timeFrozen ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTaskId(task.id)}
+                                    className="text-[11px] font-mono px-3.5 py-1.5 lg:px-2.5 lg:py-1 bg-nature-100 dark:bg-nature-850 hover:bg-nature-200 dark:hover:bg-nature-700 text-nature-600 dark:text-nature-300 hover:text-nature-800 dark:hover:text-white rounded-md border border-nature-200 dark:border-nature-700 transition-colors cursor-pointer"
+                                    title="Reschedule hour"
+                                  >
+                                    Re-time
+                                  </button>
+                                </>
+                              )}
+                            </div>
                             <button
                               onClick={() => onSelectTaskWorkflow(task)}
-                              className="p-1 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all duration-150 flex items-center justify-center cursor-pointer"
+                              className="px-3.5 py-2 lg:px-3 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all duration-150 flex items-center justify-center cursor-pointer text-[11px] font-bold gap-1"
                               title="Start Workflow Guide"
                             >
+                              <span>Focus</span>
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
