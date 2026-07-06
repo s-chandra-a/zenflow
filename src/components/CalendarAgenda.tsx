@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Task, Habit } from "../types";
-import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat } from "lucide-react";
 import { motion } from "motion/react";
 
 interface CalendarAgendaProps {
@@ -232,11 +232,13 @@ export default function CalendarAgenda({
                         }`}
                         title="Active Habit Routine. Click to view in manager."
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse" />
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1 rounded-lg bg-sage-500/10 dark:bg-sage-400/10 text-sage-600 dark:text-sage-400">
+                            <Repeat className="w-3.5 h-3.5" />
+                          </div>
                           <div>
                             <h5 className="text-xs font-bold font-sans tracking-wide">
-                              🔁 {habit.title}
+                              {habit.title}
                             </h5>
                             <p className="text-[10px] opacity-75 mt-0.5">
                               Habit routine ({habit.duration} mins)
@@ -445,11 +447,11 @@ export default function CalendarAgenda({
                             </div>
                             <button
                               onClick={() => onSelectTaskWorkflow(task)}
-                              className="px-3.5 py-2 lg:px-3 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all duration-150 flex items-center justify-center cursor-pointer text-[11px] font-bold gap-1"
+                              className="p-2.5 lg:px-3 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:bg-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all duration-150 flex items-center justify-center cursor-pointer text-[11px] font-bold gap-1"
                               title="Start Workflow Guide"
                             >
-                              <span>Focus</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
+                              <Play className="w-4 h-4" />
+                              <span className="hidden lg:inline">Focus</span>
                             </button>
                           </div>
                         </div>

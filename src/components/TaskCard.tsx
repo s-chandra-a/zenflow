@@ -171,11 +171,11 @@ export default function TaskCard({
           {!task.completed && (
             <button
               onClick={() => onSelectWorkflow(task)}
-              className="px-3.5 py-2 lg:px-2.5 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+              className="p-2.5 lg:px-2.5 lg:py-1.5 rounded-lg bg-sage-50 dark:bg-sage-950/45 hover:bg-sage-100 dark:hover:bg-sage-900 border border-sage-200 dark:border-sage-800 hover:border-sage-300 dark:hover:border-sage-700 text-sage-700 dark:text-sage-300 hover:text-sage-800 transition-all flex items-center gap-1.5 text-[11px] font-bold cursor-pointer"
               title="Start guided workflow"
             >
-              <span>Focus</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <Play className="w-4 h-4" />
+              <span className="hidden lg:inline">Focus</span>
             </button>
           )}
         </div>
