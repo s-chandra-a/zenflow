@@ -192,3 +192,18 @@
   --nature-900: #1F131A;
   --nature-950: #150C11;
 }
+
+/* Sound Bar Audio Visualizer Keyframes */
+@keyframes sound-bar {
+  0%, 100% {
+    transform: scaleY(0.15);
+  }
+  50% {
+    transform: scaleY(0.85);
+  }
+}
+
+.animate-sound-bar {
+  animation: sound-bar 0.8s ease-in-out infinite;
+  transform-origin: bottom;
+}

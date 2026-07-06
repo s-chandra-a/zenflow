@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Task, Habit } from "../types";
 import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat } from "lucide-react";
 import { motion } from "motion/react";
+import { safeVibrate } from "../utils/haptics";
 
 interface CalendarAgendaProps {
   tasks: Task[];
@@ -334,7 +335,10 @@ export default function CalendarAgenda({
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                           <div className="flex items-start gap-2.5 flex-1 min-w-0">
                             <button
-                              onClick={() => onToggleComplete(task.id)}
+                              onClick={() => {
+                                safeVibrate(15);
+                                onToggleComplete(task.id);
+                              }}
                               className={`mt-0.5 rounded-full p-0.5 transition-colors cursor-pointer ${
                                 task.completed
                                   ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-455 border border-emerald-100 dark:border-emerald-900/30"

@@ -423,6 +423,27 @@ export default function FocusWorkflowPanel({
                 </button>
               ))}
             </div>
+
+            {/* Binaural Audio Visualizer */}
+            {isSynthPlaying && (
+              <div className="flex items-end justify-center gap-1.5 h-8 w-full mt-3 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 dark:border-emerald-950/40 rounded-xl p-2 overflow-hidden">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((bar) => {
+                  const delay = (bar * 0.04).toFixed(2);
+                  const duration = (0.5 + Math.random() * 0.5).toFixed(2);
+                  return (
+                    <div
+                      key={bar}
+                      className="w-1 bg-gradient-to-t from-emerald-500/80 to-sage-500 rounded-t animate-sound-bar"
+                      style={{
+                        animationDelay: `${delay}s`,
+                        animationDuration: `${duration}s`,
+                        height: '100%',
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

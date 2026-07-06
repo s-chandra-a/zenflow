@@ -1,68 +1,29 @@
 {
   "tasks": [
     {
-      "id": "task-parsed-1783312334474-581162-0",
-      "title": "Do dishes at 5.30pm",
-      "description": "Locally extracted task from text input.",
-      "duration": 30,
-      "priority": "medium",
-      "period": "today",
-      "category": "personal",
-      "timeOfDay": "Anytime",
-      "completed": false,
-      "scheduledTime": "13:30",
-      "timeFrozen": false
-    },
-    {
-      "id": "task-parsed-1783312285785-702181-0",
-      "title": "Do laundry",
-      "description": "",
-      "duration": 30,
-      "priority": "medium",
-      "period": "today",
-      "category": "personal",
-      "timeOfDay": "Evening",
-      "completed": false,
-      "scheduledTime": "17:00",
-      "timeFrozen": true
-    },
-    {
-      "id": "task-custom-1783308819890-749567",
-      "title": "Another task",
-      "description": "",
+      "id": "task-parsed-1783321454038-572608-0",
+      "title": "Meeting",
+      "description": "Attend scheduled meeting",
       "duration": 30,
       "priority": "medium",
       "period": "today",
       "category": "work",
-      "timeOfDay": "Morning",
-      "completed": true,
-      "scheduledTime": "08:36",
+      "timeOfDay": "1:00 PM",
+      "completed": false,
+      "scheduledTime": "13:00",
       "timeFrozen": true
     },
     {
-      "id": "task-custom-1783308809103-664415",
+      "id": "task-custom-1783313471364-486462",
       "title": "A task",
       "description": "",
-      "duration": 60,
+      "duration": 180,
       "priority": "medium",
       "period": "today",
       "category": "work",
       "timeOfDay": "Morning",
-      "completed": true,
-      "scheduledTime": "08:30",
-      "timeFrozen": true
-    },
-    {
-      "id": "task-parsed-1783220612296-0",
-      "title": "Review designs",
-      "description": "Review the project designs.",
-      "duration": 30,
-      "priority": "medium",
-      "period": "today",
-      "category": "work",
-      "timeOfDay": "10:00 AM",
       "completed": false,
-      "scheduledTime": "11:00",
+      "scheduledTime": "09:00",
       "timeFrozen": false
     },
     {
@@ -75,33 +36,7 @@
       "category": "work",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "07:32",
-      "timeFrozen": true
-    },
-    {
-      "id": "task-parsed-1783138867020-1",
-      "title": "Solve GenAI GAs",
-      "description": "Work on solving GenAI GAs.",
-      "duration": 30,
-      "priority": "medium",
-      "period": "yesterday",
-      "category": "work",
-      "timeOfDay": "Anytime",
-      "completed": true,
-      "scheduledTime": "08:02",
-      "timeFrozen": true
-    },
-    {
-      "id": "task-parsed-1783138867020-2",
-      "title": "Complete EoM next chapter",
-      "description": "Finish the next chapter of EoM.",
-      "duration": 80,
-      "priority": "medium",
-      "period": "today",
-      "category": "learning",
-      "timeOfDay": "Anytime",
-      "completed": false,
-      "scheduledTime": "09:30",
+      "scheduledTime": "11:00",
       "timeFrozen": false
     },
     {
@@ -114,7 +49,71 @@
       "category": "learning",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "08:32",
+      "scheduledTime": "19:00",
+      "timeFrozen": false
+    },
+    {
+      "id": "task-custom-1783227833852-823343",
+      "title": "Another task",
+      "description": "",
+      "duration": 30,
+      "priority": "medium",
+      "period": "yesterday",
+      "category": "work",
+      "timeOfDay": "Morning",
+      "completed": false,
+      "timeFrozen": false
+    },
+    {
+      "id": "task-parsed-1783229448867-97230-0",
+      "title": "Decorate room",
+      "description": "Decorate the room",
+      "duration": 30,
+      "priority": "medium",
+      "period": "yesterday",
+      "category": "personal",
+      "timeOfDay": "4:00 PM",
+      "completed": false,
+      "scheduledTime": "16:00",
+      "timeFrozen": true
+    },
+    {
+      "id": "task-custom-1783227826909-896809",
+      "title": "A task",
+      "description": "",
+      "duration": 30,
+      "priority": "medium",
+      "period": "yesterday",
+      "category": "work",
+      "timeOfDay": "Morning",
+      "completed": false,
+      "scheduledTime": "12:01",
+      "timeFrozen": false
+    },
+    {
+      "id": "task-parsed-1783138867020-1",
+      "title": "Solve GenAI GAs",
+      "description": "Work on solving GenAI GAs.",
+      "duration": 30,
+      "priority": "medium",
+      "period": "yesterday",
+      "category": "work",
+      "timeOfDay": "Anytime",
+      "completed": true,
+      "scheduledTime": "14:10",
+      "timeFrozen": false
+    },
+    {
+      "id": "task-parsed-1783138867020-2",
+      "title": "Complete EoM next chapter",
+      "description": "Finish the next chapter of EoM.",
+      "duration": 80,
+      "priority": "medium",
+      "period": "yesterday",
+      "category": "learning",
+      "timeOfDay": "Anytime",
+      "completed": false,
+      "scheduledTime": "12:00",
       "timeFrozen": true
     },
     {
@@ -128,18 +127,30 @@
       "timeOfDay": "Anytime",
       "completed": true,
       "scheduledTime": "09:00",
-      "timeFrozen": true
+      "timeFrozen": false
     }
   ],
   "habits": [
     {
-      "id": "habit-1783310014885-914788",
-      "title": "Solve LeetCode",
+      "id": "habit-1783138849556-308695",
+      "title": "Track streak",
+      "description": "Time of day doesn't matter.",
+      "time": "08:00",
+      "duration": 15,
+      "category": "work",
+      "enabled": true,
+      "lastCompletedDate": "2026-07-06",
+      "streak": 1
+    },
+    {
+      "id": "habit-1782973461283-220675",
+      "title": "Brush",
       "description": "",
       "time": "08:00",
       "duration": 15,
       "category": "health",
       "enabled": true,
+      "lastCompletedDate": "",
       "streak": 0
     }
   ],

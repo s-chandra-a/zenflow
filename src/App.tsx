@@ -10,6 +10,7 @@ import TaskCard from "./components/TaskCard";
 import CalendarAgenda from "./components/CalendarAgenda";
 import FocusWorkflowPanel from "./components/FocusWorkflowPanel";
 import NotificationCenter from "./components/NotificationCenter";
+import { safeVibrate } from "./utils/haptics";
 
 // Polished starter tasks to ensure immediate visual excellence
 const INITIAL_TASKS: Task[] = [];
@@ -123,6 +124,27 @@ export default function App() {
   const [mindHabits, setMindHabits] = useState(() => localStorage.getItem("zen_mind_habits") !== "false");
   const [highlightedHabitId, setHighlightedHabitId] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+
+  // Progressive render scroll chunk loader for tasks checklist
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [activePeriod]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        typeof window !== "undefined" &&
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 150
+      ) {
+        setVisibleCount((prev) => prev + 25);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const checkDbStatus = async () => {
     try {
@@ -1262,7 +1284,22 @@ export default function App() {
   };
 
   // Task Manipulation
-  const handleToggleComplete = (id: string) => {
+  const handleToggleComplete = (id: string, isSwipe?: boolean) => {
+    // Show swipe hint in mobile view if allowed (not triggered via swipe)
+    if (!isSwipe && typeof window !== "undefined" && window.innerWidth < 1024) {
+      const hideHint = localStorage.getItem("hide_swipe_hint") === "true";
+      const hintCount = parseInt(localStorage.getItem("swipe_hint_count") || "0", 10);
+      if (!hideHint && hintCount < 5) {
+        localStorage.setItem("swipe_hint_count", String(hintCount + 1));
+        setActiveToast({
+          id: 'swipe-hint',
+          title: "Hint",
+          message: "Swipe on a task to mark it complete",
+          type: 'info'
+        });
+      }
+    }
+
     setTasks((prev) => {
       const updated = prev.map((t) => {
         if (t.id === id) {
@@ -1551,7 +1588,13 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row gap-6">
         
         {/* Left Column: Input and Schedule Control */}
-        <div className={`flex-1 flex flex-col space-y-6 min-w-0 ${activeMobileTab === 'tasks' || activeMobileTab === 'input' ? 'flex' : 'hidden lg:flex'}`}>
+        <motion.div
+          key={`left-col-${activeMobileTab === 'input' ? 'input' : 'tasks'}`}
+          initial={typeof window !== "undefined" && window.innerWidth < 1024 ? { opacity: 0, y: 15 } : {}}
+          animate={typeof window !== "undefined" && window.innerWidth < 1024 ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className={`flex-1 flex flex-col space-y-6 min-w-0 ${activeMobileTab === 'tasks' || activeMobileTab === 'input' ? 'flex' : 'hidden lg:flex'}`}
+        >
           
           {/* AI Parser Area */}
           <div className={`bg-white dark:bg-nature-900 border border-nature-200/80 dark:border-nature-800 rounded-2xl p-5 shadow-xs transition-colors duration-300 ${activeMobileTab === 'input' ? 'block' : 'hidden lg:block'}`} id="ai-parser-section">
@@ -1889,10 +1932,10 @@ export default function App() {
           <div className={`flex flex-col space-y-4 ${activeMobileTab === 'tasks' ? 'block' : 'hidden lg:block'}`}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               {/* Period Select Tabs */}
-              <div className="flex bg-nature-200/60 p-1 rounded-xl border border-nature-300/40 self-start">
+              <div className="flex bg-nature-200/60 p-1 rounded-xl border border-nature-300/40 w-full md:w-auto">
                 <button
                   onClick={() => setActivePeriod('yesterday')}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 md:flex-initial px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                     activePeriod === 'yesterday'
                       ? "bg-sage-600 text-white shadow-xs"
                       : "text-nature-600 hover:text-nature-900"
@@ -1902,7 +1945,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setActivePeriod('today')}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 md:flex-initial px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                     activePeriod === 'today'
                       ? "bg-sage-600 text-white shadow-xs"
                       : "text-nature-600 hover:text-nature-900"
@@ -1912,7 +1955,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setActivePeriod('tomorrow')}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 md:flex-initial px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                     activePeriod === 'tomorrow'
                       ? "bg-sage-600 text-white shadow-xs"
                       : "text-nature-600 hover:text-nature-900"
@@ -1923,7 +1966,7 @@ export default function App() {
               </div>
 
               {/* View toggle (List vs Calendar) */}
-              <div className="flex items-center gap-2 self-end md:self-auto">
+              <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
                 <div className="relative" id="ai-scheduler-wrapper">
                   <button
                     onClick={() => setShowSchedulerSettings(!showSchedulerSettings)}
@@ -1943,7 +1986,7 @@ export default function App() {
                     ) : (
                       <Sparkles className="w-4 h-4 text-sage-600" />
                     )}
-                    <span>{isPrioritizing ? "Scheduling..." : "AI Scheduler"}</span>
+                    <span>{isPrioritizing ? "Scheduling..." : (typeof window !== "undefined" && window.innerWidth < 1024 ? "Schedule" : "AI Scheduler")}</span>
                   </button>
 
                   <AnimatePresence>
@@ -2066,24 +2109,26 @@ export default function App() {
                   <span>Quick Add</span>
                 </button>
 
-                <div className="bg-nature-200/60 p-1 rounded-xl border border-nature-300/40 flex">
+                <div className="bg-nature-200/60 p-1 rounded-xl border border-nature-300/40 flex w-full md:w-auto">
                   <button
                     onClick={() => setIsCalendarView(false)}
-                    className={`p-1.5 rounded-lg transition-all ${
+                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-bold ${
                       !isCalendarView ? "bg-nature-100 text-sage-700 shadow-xs" : "text-nature-400 hover:text-nature-600"
                     }`}
                     title="List Board View"
                   >
-                    <List className="w-4.5 h-4.5" />
+                    <List className="w-4 h-4 shrink-0" />
+                    <span>Tasks</span>
                   </button>
                   <button
                     onClick={() => setIsCalendarView(true)}
-                    className={`p-1.5 rounded-lg transition-all ${
+                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-bold ${
                       isCalendarView ? "bg-nature-100 text-sage-700 shadow-xs" : "text-nature-400 hover:text-nature-600"
                     }`}
                     title="Interactive Calendar Timeline"
                   >
-                    <Calendar className="w-4.5 h-4.5" />
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span>Calendar</span>
                   </button>
                 </div>
               </div>
@@ -2298,6 +2343,7 @@ export default function App() {
                     ) : (
                       tasks
                         .filter((t) => t.period === activePeriod)
+                        .slice(0, visibleCount)
                         .map((task) => (
                           <TaskCard
                             key={task.id}
@@ -2316,10 +2362,17 @@ export default function App() {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Column: Focus and Workflow panel / Habits Manager Cockpit */}
-        <div className={`w-full lg:w-[420px] xl:w-[480px] shrink-0 relative ${activeMobileTab === 'focus' || activeMobileTab === 'habits' || activeMobileTab === 'scorecard' ? 'block' : 'hidden lg:block'}`} id="right-workflow-panel">
+        <motion.div
+          key={`right-col-${activeMobileTab}`}
+          initial={typeof window !== "undefined" && window.innerWidth < 1024 ? { opacity: 0, y: 15 } : {}}
+          animate={typeof window !== "undefined" && window.innerWidth < 1024 ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className={`w-full lg:w-[420px] xl:w-[480px] shrink-0 relative ${activeMobileTab === 'focus' || activeMobileTab === 'habits' || activeMobileTab === 'scorecard' ? 'block' : 'hidden lg:block'}`}
+          id="right-workflow-panel"
+        >
           <div className="lg:sticky lg:top-[80px] lg:max-h-[calc(100vh-96px)] h-auto lg:h-[calc(100vh-96px)] overflow-visible lg:overflow-hidden rounded-2xl border border-nature-200 dark:border-nature-800 bg-white dark:bg-nature-900 flex flex-col shadow-lg transition-colors duration-300">
             {/* Header Tabs */}
             <div className="hidden lg:flex border-b border-nature-150 dark:border-nature-855 bg-nature-50/50 dark:bg-nature-950/20 p-2 gap-1 rounded-t-2xl shrink-0">
@@ -2596,14 +2649,10 @@ export default function App() {
                                 {habit.enabled && habit.streak > 0 && (
                                   <button
                                     onClick={() => handleStreakClick(habit)}
-                                    className={`flex items-center gap-0.5 font-extrabold px-1 py-0.5 rounded border transition-all cursor-pointer ${
-                                      clickedStreakId === habit.id
-                                        ? "bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 scale-110 animate-bounce"
-                                        : "bg-orange-50/50 dark:bg-orange-950/20 border-orange-100/50 dark:border-orange-900/20 text-orange-600 dark:text-orange-400 hover:scale-105 active:scale-95"
-                                    }`}
+                                    className={`flex items-center gap-1 font-mono text-[9px] font-extrabold px-2 py-0.5 rounded-full border transition-all cursor-pointer bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 border-orange-200/50 dark:border-orange-900/30 text-orange-650 dark:text-orange-400 hover:scale-105 active:scale-95 shadow-[0_1.5px_4px_rgba(249,115,22,0.1)]`}
                                   >
-                                    <Flame className="w-3 h-3 text-orange-500 fill-orange-500" />
-                                    <span>{habit.streak}d streak</span>
+                                    <Flame className="w-3 h-3 text-orange-500 fill-orange-500 animate-pulse" />
+                                    <span>{habit.streak}d Streak</span>
                                   </button>
                                 )}
                                 <span className="text-nature-450 dark:text-nature-400 capitalize px-1 py-0.5 bg-nature-100 dark:bg-nature-800 rounded">
@@ -2762,7 +2811,7 @@ export default function App() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </main>
 
@@ -2790,6 +2839,18 @@ export default function App() {
             <div>
               <h4 className="text-xs font-bold text-nature-850 dark:text-nature-100">{activeToast.title}</h4>
               <p className="text-[11px] text-nature-600 dark:text-nature-350 mt-1 leading-normal">{activeToast.message}</p>
+              {activeToast.id === 'swipe-hint' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    localStorage.setItem("hide_swipe_hint", "true");
+                    setActiveToast(null);
+                  }}
+                  className="mt-2 block text-[10px] font-extrabold text-sage-600 dark:text-sage-450 hover:underline cursor-pointer"
+                >
+                  Do not show again
+                </button>
+              )}
             </div>
             <button
               onClick={() => setActiveToast(null)}
@@ -2976,35 +3037,77 @@ export default function App() {
 
         <AnimatePresence>
           {celebrationEffect && (
-            <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-              <style>{`
-                @keyframes float-particle {
-                  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-                  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-                }
-              `}</style>
-          {/* Confetti particles */}
-              {Array.from({ length: 60 }).map((_, i) => {
-                const size = Math.random() * 8 + 6;
-                const delay = Math.random() * 2;
-                const duration = Math.random() * 2 + 2;
-                const left = Math.random() * 100;
-                const colors = ["bg-amber-400", "bg-yellow-400", "bg-emerald-400", "bg-rose-400", "bg-indigo-400", "bg-teal-400"];
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                return (
-                  <div
-                    key={i}
-                    className={`absolute rounded-xs opacity-75 ${color}`}
-                    style={{
-                      width: `${size}px`,
-                      height: `${size}px`,
-                      left: `${left}%`,
-                      top: `-20px`,
-                      animation: `float-particle ${duration}s linear ${delay}s infinite`,
-                    }}
-                  />
-                );
-              })}
+            <div className="fixed inset-0 z-55 pointer-events-none overflow-hidden">
+              {typeof window !== "undefined" && window.innerWidth < 1024 ? (
+                // Mobile View: Particle Confetti Burst
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <style>{`
+                    @keyframes float-particle-burst {
+                      0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+                      100% { transform: translate(var(--tx), var(--ty)) scale(0.25) rotate(360deg); opacity: 0; }
+                    }
+                  `}</style>
+                  {Array.from({ length: 80 }).map((_, i) => {
+                    const size = Math.random() * 8 + 5;
+                    const delay = Math.random() * 0.15;
+                    const duration = Math.random() * 0.8 + 0.8;
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 180 + 70;
+                    const tx = (Math.cos(angle) * distance).toFixed(1) + 'px';
+                    const ty = (Math.sin(angle) * distance - 50).toFixed(1) + 'px';
+                    const colors = ["bg-amber-450", "bg-yellow-400", "bg-emerald-450", "bg-rose-450", "bg-indigo-400", "bg-teal-400", "bg-sage-500"];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    return (
+                      <div
+                        key={i}
+                        className={`absolute rounded-full opacity-90 ${color}`}
+                        style={{
+                          width: `${size}px`,
+                          height: `${size}px`,
+                          top: '50%',
+                          left: '50%',
+                          marginTop: `-${size/2}px`,
+                          marginLeft: `-${size/2}px`,
+                          animation: `float-particle-burst ${duration}s cubic-bezier(0.1, 0.8, 0.3, 1) ${delay}s forwards`,
+                          ['--tx' as any]: tx,
+                          ['--ty' as any]: ty,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                // Desktop View: Vertical Downpour Confetti
+                <>
+                  <style>{`
+                    @keyframes float-particle {
+                      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+                    }
+                  `}</style>
+                  {Array.from({ length: 65 }).map((_, i) => {
+                    const size = Math.random() * 8 + 6;
+                    const delay = Math.random() * 2;
+                    const duration = Math.random() * 2 + 2;
+                    const left = Math.random() * 100;
+                    const colors = ["bg-amber-400", "bg-yellow-400", "bg-emerald-400", "bg-rose-400", "bg-indigo-400", "bg-teal-400"];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    return (
+                      <div
+                        key={i}
+                        className={`absolute rounded-xs opacity-75 ${color}`}
+                        style={{
+                          width: `${size}px`,
+                          height: `${size}px`,
+                          left: `${left}%`,
+                          top: `-20px`,
+                          animation: `float-particle ${duration}s linear ${delay}s infinite`,
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              )}
             </div>
           )}
         </AnimatePresence>
@@ -3014,7 +3117,11 @@ export default function App() {
           <div className="w-full max-w-md bg-white/80 dark:bg-nature-900/80 backdrop-blur-lg border border-nature-200/80 dark:border-nature-800/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
             {/* Dump / Input Tab */}
             <button
-              onClick={() => { setActiveMobileTab('input'); setIsAddingTask(true); }}
+              onClick={() => {
+                safeVibrate(10);
+                setActiveMobileTab('input');
+                setIsAddingTask(true);
+              }}
               className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
                 activeMobileTab === 'input'
                   ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
@@ -3027,7 +3134,10 @@ export default function App() {
 
             {/* Tasks Tab */}
             <button
-              onClick={() => setActiveMobileTab('tasks')}
+              onClick={() => {
+                safeVibrate(10);
+                setActiveMobileTab('tasks');
+              }}
               className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
                 activeMobileTab === 'tasks'
                   ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
@@ -3041,6 +3151,7 @@ export default function App() {
             {/* Focus Tab */}
             <button
               onClick={() => {
+                safeVibrate(10);
                 setActiveMobileTab('focus');
                 setRightPanelTab('focus');
               }}
@@ -3057,6 +3168,7 @@ export default function App() {
             {/* Habits Tab */}
             <button
               onClick={() => {
+                safeVibrate(10);
                 setActiveMobileTab('habits');
                 setRightPanelTab('habits');
               }}
@@ -3073,6 +3185,7 @@ export default function App() {
             {/* Scorecard Tab */}
             <button
               onClick={() => {
+                safeVibrate(10);
                 setActiveMobileTab('scorecard');
                 setRightPanelTab('tracker');
               }}

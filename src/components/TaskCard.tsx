@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Task } from "../types";
 import { Check, Calendar, Clock, ChevronLeft, ChevronRight, Play, Edit3, Trash2 } from "lucide-react";
+import { safeVibrate } from "../utils/haptics";
 
 interface TaskCardProps {
   key?: any;
   task: Task;
-  onToggleComplete: (id: string) => void;
+  onToggleComplete: (id: string, isSwipe?: boolean) => void;
   onSelectWorkflow: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onEditTask: (task: Task) => void;
@@ -24,6 +25,45 @@ export default function TaskCard({
 }: TaskCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Touch Swipe Gesture State
+  const touchStartX = useRef(0);
+  const touchCurrentX = useRef(0);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Avoid swipe trigger on interactive inner components
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('select') || target.closest('input') || target.closest('a')) {
+      return;
+    }
+    touchStartX.current = e.touches[0].clientX;
+    touchCurrentX.current = e.touches[0].clientX;
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwiping) return;
+    touchCurrentX.current = e.touches[0].clientX;
+    const diff = touchCurrentX.current - touchStartX.current;
+    // Apply clamp for an elastic feedback feel
+    const clamped = Math.max(-100, Math.min(100, diff));
+    setSwipeOffset(clamped);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    if (swipeOffset > 75) {
+      safeVibrate(20);
+      onToggleComplete(task.id, true);
+    } else if (swipeOffset < -75) {
+      safeVibrate(30);
+      onDeleteTask(task.id);
+    }
+    setSwipeOffset(0);
+  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Avoid triggering expand when clicking inner buttons
@@ -59,6 +99,13 @@ export default function TaskCard({
   return (
     <div
       onClick={handleCardClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
+        transition: isSwiping ? 'none' : 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+      }}
       className={`group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer lg:cursor-default ${
         isHighlighted
           ? "ring-2 ring-sage-500/50 shadow-md border-sage-400 scale-[1.01] bg-white dark:bg-nature-900"
@@ -74,7 +121,10 @@ export default function TaskCard({
         {/* Checkbox and Text */}
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <button
-            onClick={() => onToggleComplete(task.id)}
+            onClick={() => {
+              safeVibrate(15);
+              onToggleComplete(task.id);
+            }}
             className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
               task.completed
                 ? "bg-emerald-600 border-emerald-500 text-white"
