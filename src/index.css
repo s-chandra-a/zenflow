@@ -207,3 +207,13 @@
   animation: sound-bar 0.8s ease-in-out infinite;
   transform-origin: bottom;
 }
+
+/* Disable spin buttons for number inputs globally */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

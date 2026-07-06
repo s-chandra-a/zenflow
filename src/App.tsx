@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, Upload, Calendar, List, Sparkles, Plus, Clock, 
   Settings, CheckCircle, CheckCircle2, ChevronRight, Play, Loader2, AlertCircle, X,
-  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy
+  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy, AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Task, InAppNotification, Habit } from "./types";
@@ -651,7 +651,7 @@ export default function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
-  const [formDuration, setFormDuration] = useState(30);
+  const [formDuration, setFormDuration] = useState<number | "">(30);
   const [formPriority, setFormPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [formPeriod, setFormPeriod] = useState<'today' | 'tomorrow'>('today');
   const [formCategory, setFormCategory] = useState("work");
@@ -665,7 +665,7 @@ export default function App() {
   const [habitFormTitle, setHabitFormTitle] = useState("");
   const [habitFormDesc, setHabitFormDesc] = useState("");
   const [habitFormTime, setHabitFormTime] = useState("08:00");
-  const [habitFormDuration, setHabitFormDuration] = useState(15);
+  const [habitFormDuration, setHabitFormDuration] = useState<number | "">(15);
   const [habitFormCategory, setHabitFormCategory] = useState("health");
   const [habitFormEnabled, setHabitFormEnabled] = useState(true);
 
@@ -683,7 +683,7 @@ export default function App() {
                 title: habitFormTitle,
                 description: habitFormDesc,
                 time: habitFormTime,
-                duration: habitFormDuration,
+                duration: habitFormDuration || 15,
                 category: habitFormCategory,
                 enabled: habitFormEnabled,
               }
@@ -699,7 +699,7 @@ export default function App() {
         title: habitFormTitle,
         description: habitFormDesc,
         time: habitFormTime,
-        duration: habitFormDuration,
+        duration: habitFormDuration || 15,
         category: habitFormCategory,
         enabled: habitFormEnabled,
         streak: 0,
@@ -1378,7 +1378,7 @@ export default function App() {
                 ...t,
                 title: formTitle,
                 description: formDesc,
-                duration: formDuration,
+                duration: formDuration || 30,
                 priority: formPriority,
                 period: formPeriod,
                 category: formCategory,
@@ -1397,7 +1397,7 @@ export default function App() {
         id: `task-custom-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         title: formTitle,
         description: formDesc,
-        duration: formDuration,
+        duration: formDuration || 30,
         priority: formPriority,
         period: formPeriod,
         category: formCategory,
@@ -1769,7 +1769,10 @@ export default function App() {
                       min="5"
                       max="480"
                       value={formDuration}
-                      onChange={(e) => setFormDuration(parseInt(e.target.value) || 30)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormDuration(val === "" ? "" : parseInt(val) || 0);
+                      }}
                       className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
                     />
                   </div>
@@ -2519,7 +2522,10 @@ export default function App() {
                               min="1"
                               max="240"
                               value={habitFormDuration}
-                              onChange={(e) => setHabitFormDuration(parseInt(e.target.value) || 15)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setHabitFormDuration(val === "" ? "" : parseInt(val) || 0);
+                              }}
                               className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3 py-1.5 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
                             />
                           </div>
@@ -2795,15 +2801,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Delete Yesterday Tasks Trigger */}
-                      <button
-                        onClick={handleDeleteYesterdayTasks}
-                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-900 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-700 dark:text-amber-400 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete Yesterday's Tasks
-                      </button>
-
                       {/* Reset Stats Trigger */}
                       <button
                         onClick={handleResetProductivity}
@@ -2815,6 +2812,24 @@ export default function App() {
                     </div>
                   );
                 })()}
+
+                {/* Separate Yesterday Task Tray Bulk Deletion Card */}
+                <div className="bg-white dark:bg-nature-900 border border-rose-200/85 dark:border-rose-900/40 p-4 rounded-xl space-y-3 text-left shadow-sm">
+                  <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-650 dark:text-rose-455 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-500" />
+                    Delete Yesterday's task tray
+                  </h5>
+                  <p className="text-[10px] text-nature-500 dark:text-nature-450 leading-relaxed">
+                    Once clicked, this action permanently deletes all history and items stored in the Yesterday tray.
+                  </p>
+                  <button
+                    onClick={handleDeleteYesterdayTasks}
+                    className="w-full py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                    Delete Yesterday's task tray
+                  </button>
+                </div>
               </div>
             )}
           </div>

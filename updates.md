@@ -120,6 +120,19 @@ Welcome to the comprehensive update log of **Zenflow**. This document details al
 - **Visual Schedule Upgrades**: Removed borders completely from the `"In Progress"` indicators, changed their arrow direction to pointing up (`↑`), and disabled animation for a more subtle look.
 - **Documentation Updates**: Documented the full application tech stack in `README.md` including React, Vite, Custom HSL Themes, Express, MongoDB, local fallback database, and Gemini 2.5 integration.
 
+---
+
+## 📱 14. Mobile Usability, Scorecard Danger Zone, & Text Adjustments
+- **Removed Swipe-to-Complete Gesture**: Removed all touch-swipe gesture controls, states, and translation style transformations from the task cards to prevent accidental checks during normal list scrolling.
+- **Enlarged Mobile Checkboxes (Radio Checks)**: Configured all circular checklist targets (task cards, habits, calendar agenda) to expand to `w-7 h-7` (28px tap target) on mobile screens (`< 1024px`), while retaining their default sizes on desktop layouts to improve touch accuracy.
+- **Cleaned Up Swipe Tutorial Toast**: Removed the `"swipe-hint"` toast notifications and the local storage tutorial state tracks.
+- **Audio Visualizer Removal**: Removed the animated sound wave visualizer bar panel under binaural sound generator states in the Focus panel.
+- **Floating Add Pill Button Visibility**: Conditioned the mobile floating `Add + AI` pill button to hide completely when in the Add (`input`) tab, avoiding redundant overlays.
+- **Calendar Occupied Slot Indicator**: Renamed the timeline's continuing indicator text from `"In Progress"` to `"Occupied"` and swapped the clock icon for a `Briefcase` icon.
+- **Notification Adjustments**: Silenced toast notifications upon checking off a task and switching binaural focus wave types to provide a calmer user experience.
+- **Quick Add Task Duration Typing Bug Fix**: Redefined states as `number | ""` and updated `onChange` callbacks to allow empty inputs temporarily. Users can now backspace and type durations freely without inputs instantly snapping back to their default values (which are automatically applied on save if left empty).
+- **Isolated Yesterday Tray Deletion Card**: Relocated the "Delete Yesterday's tasks" feature from the Productivity Stats card into its own dedicated warning box, titled **"Delete Yesterday's task tray"** and styled with alert-exclamation warning signs (`AlertTriangle` icons) and a rose-red border.
+
 
 
 
