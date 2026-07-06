@@ -497,6 +497,22 @@ export default function App() {
     triggerNotification("Stats Reset", "Productivity stats have been reset to zero.", "info");
   };
 
+  const handleDeleteYesterdayTasks = () => {
+    const yesterdayTasks = tasks.filter((t) => t.period === "yesterday");
+    if (yesterdayTasks.length === 0) {
+      triggerNotification("Yesterday Tray", "There are no tasks in the Yesterday tray to delete.", "info");
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete all ${yesterdayTasks.length} tasks in the Yesterday tray?`)) {
+      setTasks((prev) => prev.filter((t) => t.period !== "yesterday"));
+      if (selectedWorkflowTask && selectedWorkflowTask.period === "yesterday") {
+        setSelectedWorkflowTask(null);
+      }
+      triggerNotification("Tasks Deleted", `Successfully deleted ${yesterdayTasks.length} tasks from Yesterday.`, "success");
+    }
+  };
+
   // Dark Mode Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem("zen_dark_mode") === "true";
@@ -1284,29 +1300,11 @@ export default function App() {
   };
 
   // Task Manipulation
-  const handleToggleComplete = (id: string, isSwipe?: boolean) => {
-    // Show swipe hint in mobile view if allowed (not triggered via swipe)
-    if (!isSwipe && typeof window !== "undefined" && window.innerWidth < 1024) {
-      const hideHint = localStorage.getItem("hide_swipe_hint") === "true";
-      const hintCount = parseInt(localStorage.getItem("swipe_hint_count") || "0", 10);
-      if (!hideHint && hintCount < 5) {
-        localStorage.setItem("swipe_hint_count", String(hintCount + 1));
-        setActiveToast({
-          id: 'swipe-hint',
-          title: "Hint",
-          message: "Swipe on a task to mark it complete",
-          type: 'info'
-        });
-      }
-    }
-
+  const handleToggleComplete = (id: string) => {
     setTasks((prev) => {
       const updated = prev.map((t) => {
         if (t.id === id) {
           const nextState = !t.completed;
-          if (nextState) {
-            triggerNotification("Task Completed", `Great work! "${t.title}" is complete.`, "success");
-          }
           return { ...t, completed: nextState };
         }
         return t;
@@ -2618,9 +2616,9 @@ export default function App() {
                                 title={isCompleted ? "Mark incomplete" : "Mark completed"}
                               >
                                 {isCompleted ? (
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                                  <CheckCircle2 className="w-7 h-7 lg:w-5 lg:h-5 text-emerald-500 dark:text-emerald-400" />
                                 ) : (
-                                  <div className="w-5 h-5 rounded-full border-2 border-nature-350 dark:border-nature-700 hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors" />
+                                  <div className="w-7 h-7 lg:w-5 lg:h-5 rounded-full border-2 border-nature-350 dark:border-nature-700 hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors" />
                                 )}
                               </button>
                             )}
@@ -2797,6 +2795,15 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* Delete Yesterday Tasks Trigger */}
+                      <button
+                        onClick={handleDeleteYesterdayTasks}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-900 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-700 dark:text-amber-400 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Yesterday's Tasks
+                      </button>
+
                       {/* Reset Stats Trigger */}
                       <button
                         onClick={handleResetProductivity}
@@ -2839,18 +2846,6 @@ export default function App() {
             <div>
               <h4 className="text-xs font-bold text-nature-850 dark:text-nature-100">{activeToast.title}</h4>
               <p className="text-[11px] text-nature-600 dark:text-nature-350 mt-1 leading-normal">{activeToast.message}</p>
-              {activeToast.id === 'swipe-hint' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    localStorage.setItem("hide_swipe_hint", "true");
-                    setActiveToast(null);
-                  }}
-                  className="mt-2 block text-[10px] font-extrabold text-sage-600 dark:text-sage-450 hover:underline cursor-pointer"
-                >
-                  Do not show again
-                </button>
-              )}
             </div>
             <button
               onClick={() => setActiveToast(null)}
@@ -2881,22 +2876,19 @@ export default function App() {
         {/* Mobile View: Two Premium Floating Pills with Side-by-Side Icons */}
         <div className="lg:hidden flex flex-col gap-3 items-end">
           {/* Add + AI Pill Button (Opens Add tab) */}
-          <button
-            onClick={() => { setActiveMobileTab('input'); setIsAddingTask(true); }}
-            className={`h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer ${
-              activeMobileTab === 'input'
-                ? "bg-sage-600 border-sage-500 text-white"
-                : "bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
-            }`}
-            title="Open AI Parser / Add Tab"
-          >
-            <Plus className="w-4 h-4 shrink-0" />
-            <Sparkles className={`w-4 h-4 shrink-0 opacity-80 transition-colors duration-150 ${
-              activeMobileTab === 'input'
-                ? "text-white"
-                : "text-sage-600 dark:text-sage-400"
-            }`} />
-          </button>
+          {activeMobileTab !== "input" && (
+            <button
+              onClick={() => {
+                setActiveMobileTab("input");
+                setIsAddingTask(true);
+              }}
+              className="h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
+              title="Open AI Parser / Add Tab"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <Sparkles className="w-4 h-4 shrink-0 opacity-80 text-sage-600 dark:text-sage-400" />
+            </button>
+          )}
 
           {/* AI + Stats Pill Button (Toggles AI Quota popup) */}
           <button

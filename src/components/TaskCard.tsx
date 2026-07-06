@@ -26,42 +26,6 @@ export default function TaskCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Touch Swipe Gesture State
-  const touchStartX = useRef(0);
-  const touchCurrentX = useRef(0);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isSwiping, setIsSwiping] = useState(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    // Avoid swipe trigger on interactive inner components
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('select') || target.closest('input') || target.closest('a')) {
-      return;
-    }
-    touchStartX.current = e.touches[0].clientX;
-    touchCurrentX.current = e.touches[0].clientX;
-    setIsSwiping(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isSwiping) return;
-    touchCurrentX.current = e.touches[0].clientX;
-    const diff = touchCurrentX.current - touchStartX.current;
-    // Apply clamp for an elastic feedback feel restricted to positive (right) swipe only
-    const clamped = Math.max(0, Math.min(100, diff));
-    setSwipeOffset(clamped);
-  };
-
-  const handleTouchEnd = () => {
-    if (!isSwiping) return;
-    setIsSwiping(false);
-    if (swipeOffset > 75) {
-      safeVibrate(20);
-      onToggleComplete(task.id, true);
-    }
-    setSwipeOffset(0);
-  };
-
   const handleCardClick = (e: React.MouseEvent) => {
     // Avoid triggering expand when clicking inner buttons
     const target = e.target as HTMLElement;
@@ -96,13 +60,6 @@ export default function TaskCard({
   return (
     <div
       onClick={handleCardClick}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{
-        transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
-        transition: isSwiping ? 'none' : 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-      }}
       className={`group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer lg:cursor-default ${
         isHighlighted
           ? "ring-2 ring-sage-500/50 shadow-md border-sage-400 scale-[1.01] bg-white dark:bg-nature-900"
@@ -122,14 +79,14 @@ export default function TaskCard({
               safeVibrate(15);
               onToggleComplete(task.id);
             }}
-            className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+            className={`mt-0.5 shrink-0 w-7 h-7 lg:w-5 lg:h-5 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
               task.completed
                 ? "bg-emerald-600 border-emerald-500 text-white"
                 : "border-nature-300 dark:border-nature-700 hover:border-sage-500 dark:hover:border-sage-400 text-transparent hover:text-sage-500/30"
             }`}
             id={`checkbox-${task.id}`}
           >
-            <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <Check className="w-4 h-4 lg:w-3.5 lg:h-3.5 stroke-[3]" />
           </button>
 
           <div className="flex-1 min-w-0">

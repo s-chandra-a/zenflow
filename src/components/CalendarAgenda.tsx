@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Task, Habit } from "../types";
-import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat, Briefcase } from "lucide-react";
 import { motion } from "motion/react";
 import { safeVibrate } from "../utils/haptics";
 
@@ -267,8 +267,8 @@ export default function CalendarAgenda({
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-sage-500 font-bold uppercase tracking-wider font-mono flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-sage-500" />
-                              <span>In Progress</span>
+                              <Briefcase className="w-3 h-3 text-sage-500" />
+                              <span>Occupied</span>
                             </span>
                             <span className="text-xs font-semibold text-nature-800 dark:text-nature-200 truncate max-w-[200px]">
                               {ct.title}
@@ -339,13 +339,13 @@ export default function CalendarAgenda({
                                 safeVibrate(15);
                                 onToggleComplete(task.id);
                               }}
-                              className={`mt-0.5 rounded-full p-0.5 transition-colors cursor-pointer ${
+                              className={`mt-0.5 shrink-0 rounded-full w-7 h-7 lg:w-auto lg:h-auto p-0 lg:p-0.5 flex items-center justify-center transition-colors cursor-pointer ${
                                 task.completed
                                   ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-455 border border-emerald-100 dark:border-emerald-900/30"
                                   : "text-nature-400 dark:text-nature-500 hover:text-nature-600 dark:hover:text-nature-300"
                               }`}
                             >
-                              <CheckCircle2 className={`w-4 h-4 ${task.completed ? "fill-emerald-400/10" : ""}`} />
+                              <CheckCircle2 className={`w-6 h-6 lg:w-4 lg:h-4 ${task.completed ? "fill-emerald-400/10" : ""}`} />
                             </button>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 min-w-0">
