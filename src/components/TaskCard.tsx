@@ -47,8 +47,8 @@ export default function TaskCard({
     if (!isSwiping) return;
     touchCurrentX.current = e.touches[0].clientX;
     const diff = touchCurrentX.current - touchStartX.current;
-    // Apply clamp for an elastic feedback feel
-    const clamped = Math.max(-100, Math.min(100, diff));
+    // Apply clamp for an elastic feedback feel restricted to positive (right) swipe only
+    const clamped = Math.max(0, Math.min(100, diff));
     setSwipeOffset(clamped);
   };
 
@@ -58,9 +58,6 @@ export default function TaskCard({
     if (swipeOffset > 75) {
       safeVibrate(20);
       onToggleComplete(task.id, true);
-    } else if (swipeOffset < -75) {
-      safeVibrate(30);
-      onDeleteTask(task.id);
     }
     setSwipeOffset(0);
   };
