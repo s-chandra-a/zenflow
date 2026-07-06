@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Task, Habit } from "../types";
-import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat, Briefcase } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye, Play, Repeat, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "motion/react";
 import { safeVibrate } from "../utils/haptics";
 
@@ -67,6 +67,12 @@ export default function CalendarAgenda({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const expandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isTimelineCollapsed, setIsTimelineCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zen_timeline_collapsed") === "true";
+    }
+    return false;
+  });
 
   const handleTaskClick = (taskId: string, e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -164,13 +170,26 @@ export default function CalendarAgenda({
   };
 
   return (
-    <div className="bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/85 dark:border-nature-800 p-5 shadow-xs" id="calendar-agenda-root">
+    <div className="bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/85 dark:border-nature-800 p-5 shadow-xs relative" id="calendar-agenda-root">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-sage-600" />
           <h3 className="font-semibold text-nature-850 dark:text-nature-100 text-base capitalize">
             {period} Agenda Timeline
           </h3>
+          <button
+            onClick={() => {
+              setIsTimelineCollapsed((prev) => {
+                const next = !prev;
+                localStorage.setItem("zen_timeline_collapsed", String(next));
+                return next;
+              });
+            }}
+            className="hidden lg:flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg border border-nature-200 dark:border-nature-800 text-nature-600 dark:text-nature-300 hover:text-nature-950 dark:hover:text-white bg-nature-50/50 dark:bg-nature-950/20 hover:bg-nature-100 dark:hover:bg-nature-800 transition-all cursor-pointer active:scale-95"
+            title={isTimelineCollapsed ? "Show all hours" : "Hide empty slots"}
+          >
+            {isTimelineCollapsed ? "Expand Timeline" : "Collapse Timeline"}
+          </button>
         </div>
         <span className="text-xs bg-nature-100 dark:bg-nature-800 text-nature-600 dark:text-nature-300 px-2.5 py-1 rounded-full font-mono">
           {filteredTasks.length} task{filteredTasks.length !== 1 && 's'}
@@ -192,12 +211,27 @@ export default function CalendarAgenda({
           };
 
           const hrMin = timeToMin(hr.value);
-          const continuingTasks = filteredTasks.filter((t) => {
+          let continuingTasks = filteredTasks.filter((t) => {
             if (t.completed) return false;
             const startBucketMin = timeToMin(getTaskTimeBucket(t));
             const endBucketMin = startBucketMin + t.duration;
             return startBucketMin < hrMin && endBucketMin > hrMin;
           });
+
+          // In collapsed view, filter continuing tasks to show only the last occupied position of the task
+          if (isTimelineCollapsed) {
+            continuingTasks = continuingTasks.filter((ct) => {
+              const startBucketMin = timeToMin(getTaskTimeBucket(ct));
+              const endBucketMin = startBucketMin + ct.duration;
+              // If the task ends before or at the next 30-min slot, it is the last occupied position!
+              return hrMin + 30 >= endBucketMin;
+            });
+          }
+
+          const hasEvents = hourTasks.length > 0 || bucketHabits.length > 0 || continuingTasks.length > 0;
+          if (isTimelineCollapsed && !hasEvents) {
+            return null;
+          }
 
           return (
             <div key={hr.value} className="relative group" id={`agenda-hour-${hr.value}`}>
@@ -265,16 +299,16 @@ export default function CalendarAgenda({
                           onClick={() => onSelectTaskWorkflow(ct)}
                           className="py-1.5 px-3 rounded-lg bg-sage-50/10 dark:bg-sage-950/5 flex items-center justify-between text-nature-600 dark:text-nature-450 cursor-pointer select-none hover:bg-sage-50/20 dark:hover:bg-sage-950/10 transition-colors"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-sage-500 font-bold uppercase tracking-wider font-mono flex items-center gap-1">
+                          <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
+                            <span className="text-[10px] text-sage-500 font-bold uppercase tracking-wider font-mono flex items-center gap-1 shrink-0">
                               <Briefcase className="w-3 h-3 text-sage-500" />
                               <span>Occupied</span>
                             </span>
-                            <span className="text-xs font-semibold text-nature-800 dark:text-nature-200 truncate max-w-[200px]">
+                            <span className="text-xs font-semibold text-nature-800 dark:text-nature-200 truncate flex-1 min-w-0">
                               {ct.title}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-sage-500">
+                          <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-sage-500 shrink-0">
                             <span>Busy</span>
                             <span>↑</span>
                           </div>
@@ -469,7 +503,31 @@ export default function CalendarAgenda({
             </div>
           );
         })}
+        {isTimelineCollapsed && filteredTasks.length === 0 && (
+          <div className="text-[11px] text-nature-400 dark:text-nature-500 italic py-6 text-center select-none">
+            Timeline collapsed (no events scheduled)
+          </div>
+        )}
       </div>
+
+      {/* Floating Toggle Button for mobile/tablet and calendar view */}
+      <button
+        onClick={() => {
+          setIsTimelineCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem("zen_timeline_collapsed", String(next));
+            return next;
+          });
+        }}
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:absolute lg:bottom-4 lg:right-4 lg:left-auto lg:translate-x-0 lg:z-10 w-10 h-10 bg-white/95 dark:bg-nature-900/95 hover:bg-white dark:hover:bg-nature-800 text-nature-700 dark:text-nature-200 rounded-full shadow-lg border border-nature-200 dark:border-nature-800 cursor-pointer transition-all hover:scale-105 active:scale-[0.93] flex items-center justify-center select-none"
+        title={isTimelineCollapsed ? "Show all hours (Expand)" : "Hide empty slots (Collapse)"}
+      >
+        {isTimelineCollapsed ? (
+          <ChevronDown className="w-5 h-5 text-sage-600 dark:text-sage-400 stroke-[2.5]" />
+        ) : (
+          <ChevronUp className="w-5 h-5 text-sage-600 dark:text-sage-400 stroke-[2.5]" />
+        )}
+      </button>
     </div>
   );
 }
