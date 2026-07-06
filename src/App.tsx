@@ -1384,7 +1384,6 @@ export default function App() {
     setFormTimeOfDay("Morning");
     setFormScheduledTime("");
     setFormTimeFrozen(false);
-    setActiveMobileTab('tasks');
   };
 
   const handleStartEdit = (task: Task) => {
@@ -1398,7 +1397,6 @@ export default function App() {
     setFormTimeOfDay(task.timeOfDay);
     setFormScheduledTime(task.scheduledTime || "");
     setFormTimeFrozen(!!task.timeFrozen);
-    setActiveMobileTab('input');
   };
 
   // Progress & Stats Metrics
@@ -1583,52 +1581,12 @@ export default function App() {
                 className="w-full min-h-[90px] bg-transparent border-0 resize-none text-xs text-nature-800 dark:text-nature-100 placeholder-nature-450 dark:placeholder-nature-600 focus:outline-none focus:ring-0 leading-relaxed font-sans"
               />
 
-              <div className="flex items-center justify-between border-t border-nature-150 dark:border-nature-850 mt-3 pt-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-nature-100 hover:bg-nature-200/80 dark:bg-nature-800 dark:hover:bg-nature-750 border border-nature-300 dark:border-nature-700 rounded-lg text-[11px] font-semibold text-nature-700 hover:text-nature-900 dark:text-nature-200 dark:hover:text-white transition-all cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload .txt File</span>
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    accept=".txt,.md"
-                    className="hidden"
-                  />
-
-                  {/* Voice Dictation Button */}
-                  <button
-                    type="button"
-                    onClick={toggleVoiceDictation}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                      isListening
-                        ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-400 animate-pulse"
-                        : "bg-nature-100 hover:bg-nature-200/80 dark:bg-nature-800 dark:hover:bg-nature-750 border-nature-300 dark:border-nature-700 text-nature-700 hover:text-nature-900 dark:text-nature-200 dark:hover:text-white"
-                    }`}
-                    title={isListening ? "Stop listening" : "Speak to dictate tasks via microphone"}
-                  >
-                    {isListening ? (
-                      <>
-                        <MicOff className="w-3.5 h-3.5" />
-                        <span className="font-bold">Listening...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="w-3.5 h-3.5" />
-                        <span>Voice Dictate</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
+              <div className="flex flex-col sm:flex-row-reverse sm:justify-between sm:items-center gap-3 border-t border-nature-150 dark:border-nature-850 mt-3 pt-3">
+                {/* Parse Tasks with AI (Top on mobile, Right on desktop) */}
                 <button
                   onClick={handleParseTasksWithAI}
                   disabled={isParsing || !inputText.trim()}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                  className={`flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm w-full sm:w-auto ${
                     isParsing || !inputText.trim()
                       ? "bg-nature-200 dark:bg-nature-800 text-nature-400 dark:text-nature-600 cursor-not-allowed border border-nature-200 dark:border-nature-800"
                       : "bg-sage-600 hover:bg-sage-700 text-white border border-sage-500 active:scale-[0.98]"
@@ -1647,6 +1605,49 @@ export default function App() {
                     </>
                   )}
                 </button>
+
+                {/* Voice Dictate & Upload file (Middle & Bottom on mobile, Left on desktop) */}
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                  {/* Voice Dictation Button */}
+                  <button
+                    type="button"
+                    onClick={toggleVoiceDictation}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border rounded-lg text-[11px] font-semibold transition-all cursor-pointer w-full sm:w-auto ${
+                      isListening
+                        ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-400 animate-pulse"
+                        : "bg-nature-100 hover:bg-nature-200/80 dark:bg-nature-800 dark:hover:bg-nature-750 border-nature-300 dark:border-nature-700 text-nature-700 hover:text-nature-900 dark:text-nature-200 dark:hover:text-white"
+                    }`}
+                    title={isListening ? "Stop listening" : "Speak to dictate tasks via microphone"}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff className="w-3.5 h-3.5" />
+                        <span className="font-bold">Listening...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3.5 h-3.5" />
+                        <span>Voice Dictate</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Upload file Button */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 bg-nature-100 hover:bg-nature-200/80 dark:bg-nature-800 dark:hover:bg-nature-750 border border-nature-300 dark:border-nature-700 rounded-lg text-[11px] font-semibold text-nature-700 hover:text-nature-900 dark:text-nature-200 dark:hover:text-white transition-all cursor-pointer w-full sm:w-auto"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload .txt File</span>
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept=".txt,.md"
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1771,7 +1772,7 @@ export default function App() {
                         initial={{ opacity: 0, y: 8, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="absolute right-0 mt-2 p-4 rounded-2xl border border-nature-250 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md shadow-xl w-72 text-left space-y-3.5 z-50 transition-colors duration-300 font-sans"
+                        className="fixed bottom-24 left-4 right-4 md:absolute md:bottom-auto md:left-auto md:right-0 md:mt-2 p-4 rounded-2xl border border-nature-250 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md shadow-xl w-auto md:w-72 text-left space-y-3.5 z-50 transition-colors duration-300 font-sans"
                       >
                         <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-800 pb-2">
                           <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-nature-850 dark:text-nature-100 flex items-center gap-1.5">
@@ -1870,12 +1871,7 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    setIsAddingTask(!isAddingTask);
-                    if (!isAddingTask) {
-                      setActiveMobileTab('input');
-                    }
-                  }}
+                  onClick={() => setIsAddingTask(!isAddingTask)}
                   className="p-2 bg-nature-100 hover:bg-nature-200/80 border border-nature-300 rounded-xl text-nature-700 hover:text-nature-900 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                   id="add-task-toggle-btn"
                 >
@@ -1925,7 +1921,6 @@ export default function App() {
                       onClick={() => {
                         setIsAddingTask(false);
                         setEditingTask(null);
-                        setActiveMobileTab('tasks');
                       }}
                       className="text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 cursor-pointer"
                     >
@@ -2764,12 +2759,13 @@ export default function App() {
 
       {/* Floating Google AI Studio Quota Monitor popover (Bottom-Right) */}
       <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40">
+        {/* Desktop View: Single Quota Button */}
         <button
           onClick={() => setShowQuotaPopover(!showQuotaPopover)}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border shadow-lg transition-all duration-305 font-mono text-[11px] font-bold cursor-pointer ${
+          className={`hidden lg:flex items-center gap-1.5 px-3.5 py-2 rounded-full border shadow-lg transition-all duration-305 font-mono text-[11px] font-bold cursor-pointer ${
             showQuotaPopover
               ? "bg-sage-600 border-sage-500 text-white"
-              : "bg-white/90 dark:bg-nature-900/90 backdrop-blur-md border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200 hover:border-nature-350 dark:hover:border-nature-700"
+              : "bg-white/90 dark:bg-nature-900/90 backdrop-blur-md border-nature-200/80 dark:border-nature-800 text-nature-700 dark:text-nature-200 hover:border-nature-350 dark:hover:border-nature-700"
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -2777,13 +2773,57 @@ export default function App() {
           <span className={`w-1.5 h-1.5 rounded-full ${hasApiKey === true ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
         </button>
 
+        {/* Mobile View: Two Premium Floating Pills with Side-by-Side Icons */}
+        <div className="lg:hidden flex flex-col gap-3 items-end">
+          {/* Add + AI Pill Button (Opens Add tab) */}
+          <button
+            onClick={() => setActiveMobileTab('input')}
+            className={`h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer ${
+              activeMobileTab === 'input'
+                ? "bg-sage-600 border-sage-500 text-white"
+                : "bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
+            }`}
+            title="Open AI Parser / Add Tab"
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            <Sparkles className={`w-4 h-4 shrink-0 opacity-80 transition-colors duration-150 ${
+              activeMobileTab === 'input'
+                ? "text-white"
+                : "text-sage-600 dark:text-sage-400"
+            }`} />
+          </button>
+
+          {/* AI + Stats Pill Button (Toggles AI Quota popup) */}
+          <button
+            onClick={() => setShowQuotaPopover(!showQuotaPopover)}
+            className={`h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer relative ${
+              showQuotaPopover
+                ? "bg-sage-600 border-sage-500 text-white"
+                : "bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
+            }`}
+            title="Toggle AI Studio Quota"
+          >
+            <Sparkles className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+              showQuotaPopover
+                ? "text-white"
+                : "text-sage-600 dark:text-sage-400"
+            }`} />
+            <TrendingUp className={`w-4 h-4 shrink-0 opacity-80 transition-colors duration-150 ${
+              showQuotaPopover
+                ? "text-white"
+                : "text-rose-500 dark:text-rose-400"
+            }`} />
+            <span className={`absolute top-0 right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-nature-900 ${hasApiKey === true ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+          </button>
+        </div>
+
         <AnimatePresence>
           {showQuotaPopover && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute bottom-12 right-0 p-4 rounded-2xl border border-nature-200 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md shadow-2xl w-72 text-left space-y-3.5 transition-colors duration-300"
+              className="fixed bottom-24 left-4 right-4 md:absolute md:bottom-14 md:right-0 md:left-auto md:w-72 p-4 rounded-2xl border border-nature-200 dark:border-nature-800 bg-white/95 dark:bg-nature-900/95 backdrop-blur-md shadow-2xl w-auto text-left space-y-3.5 transition-colors duration-300"
             >
               {/* Popover Header */}
               <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-800 pb-2">
@@ -2791,13 +2831,22 @@ export default function App() {
                   <Sparkles className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400" />
                   AI Studio Quota
                 </h4>
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
-                  hasApiKey === true
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/30"
-                    : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-450 border border-rose-100 dark:border-rose-900/30"
-                }`}>
-                  {hasApiKey === true ? "API Key Ok" : "No Key Found"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                    hasApiKey === true
+                      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/30"
+                      : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-450 border border-rose-100 dark:border-rose-900/30"
+                  }`}>
+                    {hasApiKey === true ? "API Key Ok" : "No Key Found"}
+                  </span>
+                  <button
+                    onClick={() => setShowQuotaPopover(false)}
+                    className="p-2.5 sm:p-1 rounded-md text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer flex items-center justify-center"
+                    title="Close"
+                  >
+                    <X className="w-5 h-5 sm:w-3.5 sm:h-3.5 shrink-0" />
+                  </button>
+                </div>
               </div>
 
               {/* Model & Tier dropdowns */}
@@ -2837,87 +2886,6 @@ export default function App() {
                     <option value="free">Free Tier</option>
                     <option value="pay-as-you-go">Pay-as-you-go</option>
                   </select>
-                </div>
-              </div>
-
-              {/* Quota meters */}
-              <div className="space-y-3 pt-2.5 border-t border-nature-150 dark:border-nature-800">
-                {/* Requests Per Minute */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-baseline text-[10px] font-mono">
-                    <span className="text-nature-500 dark:text-nature-400">RPM (Reqs/Min)</span>
-                    <span className="font-bold text-nature-850 dark:text-nature-200">
-                      {requestsLog.filter(ts => Date.now() - ts < 60000).length} / {
-                        selectedAiModel.includes('pro')
-                          ? (selectedAiModel === 'gemini-1.5-pro' ? (apiTier === 'free' ? 2 : 1000) : (apiTier === 'free' ? 15 : 360))
-                          : (apiTier === 'free' ? 15 : 2000)
-                      }
-                    </span>
-                  </div>
-                  <div className="w-full bg-nature-100 dark:bg-nature-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sage-600 transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (requestsLog.filter(ts => Date.now() - ts < 60000).length / (
-                          selectedAiModel.includes('pro')
-                            ? (selectedAiModel === 'gemini-1.5-pro' ? (apiTier === 'free' ? 2 : 1000) : (apiTier === 'free' ? 15 : 360))
-                            : (apiTier === 'free' ? 15 : 2000)
-                        )) * 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Tokens Per Minute */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-baseline text-[10px] font-mono">
-                    <span className="text-nature-500 dark:text-nature-400">TPM (Tokens/Min)</span>
-                    <span className="font-bold text-nature-850 dark:text-nature-200">
-                      {tokensLog.filter(t => Date.now() - t.timestamp < 60000).reduce((sum, item) => sum + item.tokens, 0).toLocaleString()} / {
-                        selectedAiModel.includes('pro')
-                          ? (selectedAiModel === 'gemini-1.5-pro' ? (apiTier === 'free' ? "32,000" : "2,000,000") : (apiTier === 'free' ? "32,000" : "120,000"))
-                          : (apiTier === 'free' ? "1,000,000" : "4,000,000")
-                      }
-                    </span>
-                  </div>
-                  <div className="w-full bg-nature-100 dark:bg-nature-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sage-600 transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (tokensLog.filter(t => Date.now() - t.timestamp < 60000).reduce((sum, item) => sum + item.tokens, 0) / (
-                          selectedAiModel.includes('pro')
-                            ? (selectedAiModel === 'gemini-1.5-pro' ? (apiTier === 'free' ? 32000 : 2000000) : (apiTier === 'free' ? 32000 : 120000))
-                            : (apiTier === 'free' ? 1000000 : 4000000)
-                        )) * 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Requests Per Day */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-baseline text-[10px] font-mono">
-                    <span className="text-nature-500 dark:text-nature-400">RPD (Requests/Day)</span>
-                    <span className="font-bold text-nature-850 dark:text-nature-200">
-                      {requestsLog.filter(ts => Date.now() - ts < 86400000).length} / {
-                        apiTier === 'free'
-                          ? (selectedAiModel === 'gemini-1.5-pro' ? "50" : "1,500")
-                          : "Unlimited"
-                      }
-                    </span>
-                  </div>
-                  {apiTier === 'free' && (
-                    <div className="w-full bg-nature-100 dark:bg-nature-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-sage-600 transition-all duration-300"
-                        style={{
-                          width: `${Math.min(100, (requestsLog.filter(ts => Date.now() - ts < 86400000).length / (
-                            selectedAiModel === 'gemini-1.5-pro' ? 50 : 1500
-                          )) * 100)}%`
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -3000,6 +2968,19 @@ export default function App() {
         {/* Mobile Floating Bottom Navigation */}
         <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50 flex justify-center">
           <div className="w-full max-w-md bg-white/80 dark:bg-nature-900/80 backdrop-blur-lg border border-nature-200/80 dark:border-nature-800/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
+            {/* Dump / Input Tab */}
+            <button
+              onClick={() => setActiveMobileTab('input')}
+              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
+                activeMobileTab === 'input'
+                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
+                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Add</span>
+            </button>
+
             {/* Tasks Tab */}
             <button
               onClick={() => setActiveMobileTab('tasks')}
@@ -3043,19 +3024,6 @@ export default function App() {
             >
               <Clock className="w-5 h-5" />
               <span className="text-[10px] font-mono tracking-tight">Habits</span>
-            </button>
-
-            {/* Dump / Input Tab */}
-            <button
-              onClick={() => setActiveMobileTab('input')}
-              className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
-                activeMobileTab === 'input'
-                  ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
-                  : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
-              }`}
-            >
-              <Plus className="w-5 h-5" />
-              <span className="text-[10px] font-mono tracking-tight">Add</span>
             </button>
 
             {/* Scorecard Tab */}

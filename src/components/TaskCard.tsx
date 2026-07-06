@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Task } from "../types";
 import { Check, Calendar, Clock, ChevronLeft, ChevronRight, Play, Edit3, Trash2 } from "lucide-react";
 
@@ -22,9 +22,44 @@ export default function TaskCard({
   onMigrateTask,
   isHighlighted,
 }: TaskCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Avoid triggering expand when clicking inner buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('select') || target.closest('input') || target.closest('a')) {
+      return;
+    }
+
+    // Only apply on mobile view (< 1024px)
+    if (window.innerWidth >= 1024) return;
+
+    setIsExpanded((prev) => {
+      const next = !prev;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (next) {
+        timeoutRef.current = setTimeout(() => {
+          setIsExpanded(false);
+        }, 10000);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   return (
     <div
-      className={`group relative p-4 rounded-xl border transition-all duration-300 ${
+      onClick={handleCardClick}
+      className={`group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer lg:cursor-default ${
         isHighlighted
           ? "ring-2 ring-sage-500/50 shadow-md border-sage-400 scale-[1.01] bg-white dark:bg-nature-900"
           : task.completed
@@ -52,14 +87,18 @@ export default function TaskCard({
 
           <div className="flex-1 min-w-0">
             <h4
-              className={`text-sm font-bold leading-relaxed truncate ${
+              className={`text-sm font-bold leading-relaxed ${
+                isExpanded ? "whitespace-normal break-words" : "truncate"
+              } ${
                 task.completed ? "line-through text-nature-400 dark:text-nature-500" : "text-nature-950 dark:text-white"
               }`}
             >
               {task.title}
             </h4>
             {task.description && (
-              <p className="text-xs text-nature-550 dark:text-nature-400 mt-1 line-clamp-2 leading-relaxed">
+              <p className={`text-xs text-nature-550 dark:text-nature-400 mt-1 leading-relaxed ${
+                isExpanded ? "whitespace-normal break-words" : "line-clamp-2"
+              }`}>
                 {task.description}
               </p>
             )}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Task, Habit } from "../types";
 import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye } from "lucide-react";
 import { motion } from "motion/react";
@@ -64,6 +64,37 @@ export default function CalendarAgenda({
 }: CalendarAgendaProps) {
   const filteredTasks = tasks.filter((t) => t.period === period);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const expandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTaskClick = (taskId: string, e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('select') || target.closest('input') || target.closest('a')) {
+      return;
+    }
+    if (window.innerWidth >= 1024) return;
+
+    if (expandTimeoutRef.current) {
+      clearTimeout(expandTimeoutRef.current);
+      expandTimeoutRef.current = null;
+    }
+
+    setExpandedTaskId((prev) => {
+      const next = prev === taskId ? null : taskId;
+      if (next) {
+        expandTimeoutRef.current = setTimeout(() => {
+          setExpandedTaskId(null);
+        }, 10000);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (expandTimeoutRef.current) clearTimeout(expandTimeoutRef.current);
+    };
+  }, []);
 
   // Helper to map general periods or exact times to closest 30-minute block
   const getTaskTimeBucket = (task: Task): string => {
@@ -287,7 +318,8 @@ export default function CalendarAgenda({
                           key={task.id}
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`p-3.5 rounded-xl border transition-all duration-200 group/card relative ${
+                          onClick={(e) => handleTaskClick(task.id, e)}
+                          className={`p-3.5 rounded-xl border transition-all duration-200 group/card relative cursor-pointer lg:cursor-default ${
                             task.completed
                               ? "bg-emerald-50/20 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/30 opacity-70"
                               : hasOverlap
@@ -298,12 +330,12 @@ export default function CalendarAgenda({
                           }`}
                         >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5">
+                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
                             <button
                               onClick={() => onToggleComplete(task.id)}
                               className={`mt-0.5 rounded-full p-0.5 transition-colors cursor-pointer ${
                                 task.completed
-                                  ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+                                  ? "text-emerald-600 hover:text-emerald-500 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/30"
                                   : "text-nature-400 dark:text-nature-500 hover:text-nature-600 dark:hover:text-nature-300"
                               }`}
                             >
@@ -319,7 +351,9 @@ export default function CalendarAgenda({
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
                                 <h4
-                                  className={`text-sm font-bold truncate ${
+                                  className={`text-sm font-bold ${
+                                    expandedTaskId === task.id ? "whitespace-normal break-words" : "truncate"
+                                  } ${
                                     task.completed ? "line-through text-nature-400 dark:text-nature-500" : "text-nature-950 dark:text-white"
                                   }`}
                                 >
@@ -327,7 +361,9 @@ export default function CalendarAgenda({
                                 </h4>
                               </div>
                               {task.description && (
-                                <p className="text-xs text-nature-550 dark:text-nature-400 mt-0.5 line-clamp-1">
+                                <p className={`text-xs text-nature-550 dark:text-nature-400 mt-0.5 leading-relaxed ${
+                                  expandedTaskId === task.id ? "whitespace-normal break-words" : "line-clamp-1"
+                                }`}>
                                   {task.description}
                                 </p>
                               )}
@@ -365,7 +401,7 @@ export default function CalendarAgenda({
                           </div>
 
                           {/* Quick Workflow Action */}
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0 self-center">
                             {editingTaskId === task.id ? (
                               <select
                                 value={getTaskTimeBucket(task)}
