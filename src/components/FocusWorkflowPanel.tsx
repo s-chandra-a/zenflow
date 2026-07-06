@@ -14,6 +14,7 @@ interface FocusWorkflowPanelProps {
   bypassAI: boolean;
   onAddTokens: (count: number) => void;
   model?: string;
+  onAddFallbackWarning?: (type: string, title: string, message: string) => void;
 }
 
 export default function FocusWorkflowPanel({
@@ -24,6 +25,7 @@ export default function FocusWorkflowPanel({
   bypassAI,
   onAddTokens,
   model,
+  onAddFallbackWarning,
 }: FocusWorkflowPanelProps) {
   const [workflow, setWorkflow] = useState<TaskWorkflow | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,18 @@ export default function FocusWorkflowPanel({
 
         const data = await response.json();
         setWorkflow(data);
+        if (data.isFallback && onAddFallbackWarning) {
+          onAddFallbackWarning(
+            'gemini',
+            'Workflow Generator Offline Fallback',
+            `Could not reach Google AI Studio to generate steps for "${task.title}". Loaded local templates.`
+          );
+          onTriggerNotification(
+            "Workflow Fallback",
+            "Loaded offline template steps for your task focus.",
+            "warning"
+          );
+        }
         if (data.tokenUsage) {
           onAddTokens(data.tokenUsage.totalTokens || 0);
         }

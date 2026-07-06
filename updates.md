@@ -98,6 +98,34 @@ Welcome to the comprehensive update log of **Zenflow**. This document details al
 - **Interactive Calendar Freeze Toggle**: Added a Lock/Unlock button next to the "Re-time" action in the calendar timeline card. Clicking it locks the task at its current slot, showing an amber **Frozen** badge next to its duration.
 - **Manual Form Freeze Checkbox**: Added a **Freeze Time** checkbox to the Custom Task form (auto-selects when a Specific Time is inputted), giving users manual control over scheduling constraints.
 
+---
+
+## 📅 12. Smart Completed Tasks Scheduling
+- **Completed Tasks Before Current Time**: Any task marked completed that is already scheduled before the current scheduling time boundary is automatically ignored and locked exactly at its current scheduled slot, preserving historical timeline data.
+- **Completed Tasks After Current Time (Jammed)**: Any task marked completed that was scheduled *after* the current scheduling boundary (or has no time assigned) is automatically moved up and stacked back-to-back, ending exactly at the current time boundary.
+- **Timeline Optimization**: Jamming completed tasks in the past ensures they do not occupy valuable future slots, leaving maximum scheduling space open for remaining incomplete tasks.
+- **Deterministic Preprocessing**: Implemented this logic in the backend scheduler router of `server.ts` to preprocess tasks before calling either the AI engine or the local fallback scheduler, ensuring absolute reliability and consistency.
+
+---
+
+## 🚀 13. System Integrity & User Warning Upgrades
+- **Rollover Catch-Up Engine**: Upgraded daily rollover calculation inside `src/App.tsx` to measure date difference between `lastRolloverDate` and the current date, adjusting the tracked `daysCount` dynamically by the correct number of missed days when returning from a long absence.
+- **Manual Overlap & Collision Warnings**: Added an overlap checker loop inside `CalendarAgenda.tsx` that identifies any time collision across active tasks on the timeline and displays a warning badge (`⚠️ Overlap`) next to task details on affected cards. Completed tasks are ignored during conflict checks so warnings only highlight incomplete items.
+- **Gemini vs. Fallback Status Indicator**: Added a server-side status endpoint (`/api/ai-status`) to monitor key state.
+- **Habits Overlap Detection**: Overlap warnings now automatically detect when tasks collide with active habit slots if the `Mind habits` option is active, giving users a holistic view of scheduling block overlaps.
+- **Long Duration Directional Span Indicators**: Replaced empty hour slots (like `"No events scheduled"`) with a subtle `"In Progress"` span indicator showing the task title and an arrow (`↓`) matching the task's duration span to visualize ongoing time blocks and busy slots.
+- **Separate Fallback Console Alerts**: Built a dedicated top-level warning panel in `src/App.tsx` that triggers anytime local/offline fallbacks are used instead of Gemini or MongoDB. Warnings display as persistent red alerts containing a title, a warning description, a close button, and a precise timestamp.
+- **Calendar Task View Navigation**: Added a View icon (`Eye`) to the left of the task title text on calendar task cards. Clicking this switches the layout view to list-mode (switching mobile tabs if necessary), scrolls the targeted task card into view, and highlights the card with a theme-aware ring glow for 2 seconds.
+- **Excluded Completed Tasks from Progress/Overlap**: Configured ongoing task indicators (`In Progress` span blocks) to ignore completed tasks, keeping the timeline free of completed historical span fillers.
+- **Visual Schedule Upgrades**: Removed borders completely from the `"In Progress"` indicators, changed their arrow direction to pointing up (`↑`), and disabled animation for a more subtle look.
+- **Documentation Updates**: Documented the full application tech stack in `README.md` including React, Vite, Custom HSL Themes, Express, MongoDB, local fallback database, and Gemini 2.5 integration.
+
+
+
+
+
+
+
 
 
 

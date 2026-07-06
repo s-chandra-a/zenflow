@@ -10,6 +10,7 @@ interface TaskCardProps {
   onDeleteTask: (id: string) => void;
   onEditTask: (task: Task) => void;
   onMigrateTask: (id: string, direction: "back" | "forth") => void;
+  isHighlighted?: boolean;
 }
 
 export default function TaskCard({
@@ -19,11 +20,14 @@ export default function TaskCard({
   onDeleteTask,
   onEditTask,
   onMigrateTask,
+  isHighlighted,
 }: TaskCardProps) {
   return (
     <div
-      className={`group relative p-4 rounded-xl border transition-all duration-200 ${
-        task.completed
+      className={`group relative p-4 rounded-xl border transition-all duration-300 ${
+        isHighlighted
+          ? "ring-2 ring-sage-500/50 shadow-md border-sage-400 scale-[1.01] bg-white dark:bg-nature-900"
+          : task.completed
           ? "bg-nature-50/60 dark:bg-nature-950/40 border-nature-200 dark:border-nature-850 opacity-60"
           : task.priority === "high"
           ? "bg-white dark:bg-nature-900 border-rose-200 dark:border-rose-950 hover:border-rose-300 dark:hover:border-rose-900 shadow-xs"

@@ -260,6 +260,15 @@ app.get("/api/models", async (req, res) => {
   }
 });
 
+// API Endpoint to check AI API status
+app.get("/api/ai-status", (req, res) => {
+  const hasKey = !!process.env.GOOGLE_API_KEY || !!process.env.GEMINI_API_KEY;
+  res.json({
+    status: hasKey ? "active" : "fallback",
+    provider: process.env.GOOGLE_API_KEY ? "Google Cloud Studio" : process.env.GEMINI_API_KEY ? "Gemini API Link" : "Local Algorithm Fallback"
+  });
+});
+
 // API Endpoint to parse text into structured tasks
 app.post("/api/parse-tasks", async (req, res) => {
   try {
@@ -315,7 +324,7 @@ Return a single JSON object with a "tasks" array containing the parsed tasks. Do
     } catch (apiError: any) {
       console.warn("Gemini API error in /api/parse-tasks, falling back to local extraction:", apiError);
       const fallbackResult = parseLocalTasks(text);
-      res.json({ ...fallbackResult, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
+      res.json({ ...fallbackResult, isFallback: true, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
     }
   } catch (error: any) {
     console.error("Critical error in /api/parse-tasks:", error);
@@ -381,7 +390,7 @@ Return only a valid JSON matching this schema. No explanation or markdown tags.`
     } catch (apiError: any) {
       console.warn("Gemini API error in /api/generate-workflow, falling back to local workflow generation:", apiError);
       const fallbackResult = getLocalWorkflow(taskId, title, description, duration, priority, period);
-      res.json({ ...fallbackResult, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
+      res.json({ ...fallbackResult, isFallback: true, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
     }
   } catch (error: any) {
     console.error("Critical error in /api/generate-workflow:", error);
@@ -406,12 +415,74 @@ app.post("/api/ai-scheduler", async (req, res) => {
     const context = options?.context ?? "";
     const mindHabits = options?.mindHabits ?? false;
 
+    // Helper to calculate time in minutes
+    const timeToMin = (tStr: string): number => {
+      if (!tStr) return 480;
+      const parts = tStr.split(":");
+      if (parts.length < 2) return 480;
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      return (isNaN(h) ? 8 : h) * 60 + (isNaN(m) ? 0 : m);
+    };
+
+    const scheduleStartTime = period === "tomorrow" ? "08:00" : (currentTime || "08:00");
+    const currentMinVal = timeToMin(scheduleStartTime);
+
+    // Partition tasks:
+    // 1. Completed tasks scheduled before currentTime (kept as is)
+    // 2. Completed tasks scheduled after (or equal to) currentTime or without scheduled time (jammed before currentTime)
+    // 3. Incompleted tasks (to be scheduled normally)
+    const completedTasksBefore = tasks.filter(t => t.completed && t.scheduledTime && timeToMin(t.scheduledTime) < currentMinVal);
+    const completedTasksToJam = tasks.filter(t => t.completed && (!t.scheduledTime || timeToMin(t.scheduledTime) >= currentMinVal));
+    const remainingToSchedule = tasks.filter(t => !t.completed);
+
+    // Jam completed tasks scheduled after current time just before current time
+    let endMin = currentMinVal;
+    const jammedTasks: any[] = [];
+    for (let i = completedTasksToJam.length - 1; i >= 0; i--) {
+      const task = completedTasksToJam[i];
+      const startMin = endMin - task.duration;
+      const sh = Math.floor(startMin / 60);
+      const sm = startMin % 60;
+      const adjustedHour = ((sh % 24) + 24) % 24;
+      const adjustedMin = ((sm % 60) + 60) % 60;
+      const timeStr = `${adjustedHour.toString().padStart(2, "0")}:${adjustedMin.toString().padStart(2, "0")}`;
+      
+      jammedTasks.unshift({
+        id: task.id,
+        scheduledTime: timeStr,
+        priority: task.priority,
+        period: task.period,
+        timeFrozen: true
+      });
+      endMin = startMin;
+    }
+
+    const preProcessedScheduledTasks = [
+      ...completedTasksBefore.map(t => ({
+        id: t.id,
+        scheduledTime: t.scheduledTime,
+        priority: t.priority,
+        period: t.period,
+        timeFrozen: true
+      })),
+      ...jammedTasks
+    ];
+
+    // If there are no incompleted tasks left, return pre-scheduled completed tasks immediately
+    if (remainingToSchedule.length === 0) {
+      return res.json({
+        scheduledTasks: preProcessedScheduledTasks,
+        newBreaks: [],
+        tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+      });
+    }
+
     try {
       if (bypassAI) {
         throw new Error("AI bypassed: quota limit exceeded");
       }
       const ai = getAI();
-      const scheduleStartTime = period === "tomorrow" ? "08:00" : (currentTime || "08:00");
       const targetDayText = period === "tomorrow" ? "tomorrow" : "today";
       const overflowGuideline = period === "tomorrow"
         ? `3. NO OVERFLOW DISPLACEMENT (CRITICAL):
@@ -425,7 +496,17 @@ app.post("/api/ai-scheduler", async (req, res) => {
 Your goal is to schedule the user's tasks starting from ${scheduleStartTime} and finishing by 11:00 PM (23:00) ${targetDayText}.
 
 Input Tasks to schedule:
-${JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description || "", duration: t.duration, priority: t.priority, category: t.category || "work", scheduledTime: t.scheduledTime, timeFrozen: t.timeFrozen || false })), null, 2)}
+${JSON.stringify(remainingToSchedule.map(t => ({ id: t.id, title: t.title, description: t.description || "", duration: t.duration, priority: t.priority, category: t.category || "work", scheduledTime: t.scheduledTime, timeFrozen: t.timeFrozen || false })), null, 2)}
+
+Completed/Locked Tasks already scheduled (Do NOT schedule any tasks during these times. Keep these slots blank to leave gaps for these tasks):
+${JSON.stringify(preProcessedScheduledTasks.map(pt => {
+  const original = tasks.find(ot => ot.id === pt.id);
+  return {
+    title: original?.title || "Completed Task",
+    time: pt.scheduledTime,
+    duration: original?.duration || 30
+  };
+}), null, 2)}
 
 User's Habits (${mindHabits ? "CRITICAL: Do NOT schedule any tasks during these habit times. Keep these slots blank to leave gaps for these habits" : "You can ignore these habit times when scheduling tasks"}):
 ${JSON.stringify((habits || []).filter((h: any) => h.enabled).map((h: any) => ({ title: h.title, time: h.time, duration: h.duration })), null, 2)}
@@ -446,7 +527,7 @@ ${overflowGuideline}
    - Reschedule tasks to make the day productive. Adjust their priorities ('high', 'medium', 'low') based on their urgency.
 5. TIME-FROZEN TASKS (CRITICAL CONSTRAINT):
    - Any input task marked with "timeFrozen": true MUST remain scheduled at its pre-existing "scheduledTime" (HH:MM). You MUST NOT shift its start time or duration or modify its period.
-   - You MUST schedule all other tasks *around* these time-frozen tasks to avoid timeline overlaps.
+   - In addition to habits, you MUST NOT schedule any tasks that overlap with the Completed/Locked Tasks listed above. You MUST schedule all other tasks *around* these times to avoid timeline overlaps.
 
 Return a JSON object containing a "scheduledTasks" array and an empty "newBreaks" array.
 Return ONLY a valid JSON object matching this structure:
@@ -476,11 +557,22 @@ Do not include any explanation or markdown outside the JSON.`;
 
       const resultText = response.text || "{}";
       const resultJson = parseSafeJSON(resultText);
-      res.json({ ...resultJson, tokenUsage });
+      const mergedScheduledTasks = [
+        ...preProcessedScheduledTasks,
+        ...(resultJson.scheduledTasks || [])
+      ];
+      res.json({ ...resultJson, scheduledTasks: mergedScheduledTasks, tokenUsage });
     } catch (apiError: any) {
       console.warn("Gemini API error in /api/ai-scheduler, falling back to local scheduling:", apiError);
-      const fallbackResult = getLocalScheduling(tasks, habits || [], options);
-      res.json({ ...fallbackResult, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
+      const fallbackTasks = [
+        ...preProcessedScheduledTasks.map(pt => {
+          const ot = tasks.find(o => o.id === pt.id);
+          return { ...ot, ...pt };
+        }),
+        ...remainingToSchedule
+      ];
+      const fallbackResult = getLocalScheduling(fallbackTasks, habits || [], options);
+      res.json({ ...fallbackResult, isFallback: true, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
     }
   } catch (error: any) {
     console.error("Critical error in /api/ai-scheduler:", error);
@@ -547,7 +639,7 @@ Do not include any explanation or markdown outside the JSON.`;
     } catch (apiError: any) {
       console.warn("Gemini API error in /api/generate-summary, falling back to local summary:", apiError);
       const fallbackResult = getLocalSummary(tasks);
-      res.json({ ...fallbackResult, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
+      res.json({ ...fallbackResult, isFallback: true, tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } });
     }
   } catch (error: any) {
     console.error("Critical error in /api/generate-summary:", error);

@@ -4,6 +4,27 @@ Zen Flow is a peak-performance scheduler and visual agenda manager designed to h
 
 ---
 
+## 🛠️ Tech Stack
+
+This project is built using a modern, performant, and responsive stack:
+
+*   **Frontend**:
+    *   **React (v18+)** with **TypeScript** for structured components
+    *   **Vite** as the fast build and development server
+    *   **Vanilla CSS + CSS Custom Properties** for custom theme-aware design systems (Forest, nordic, crimson, orchid, dark/light modes)
+    *   **Framer Motion** for smooth, micro-animated user interfaces
+    *   **Lucide React** for premium iconography
+*   **Backend**:
+    *   **Node.js** with **Express** API router
+    *   **TypeScript** transpiled and bundled via **esbuild**
+*   **Database & Storage**:
+    *   **MongoDB** (Primary cloud database support)
+    *   **Local File System DB Fallback** (`db.json` offline local persistence)
+*   **AI Integration**:
+    *   **Google Gemini 2.5 Flash** (via Google AI Studio SDK) for AI scheduling, natural language parsing, step-by-step focus workflows, and daily productivity retrospectives.
+
+---
+
 ## 🚀 How to Run the App (From Scratch)
 
 Follow these steps to launch the application locally on your system:

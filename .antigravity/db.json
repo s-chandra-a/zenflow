@@ -1,16 +1,69 @@
 {
   "tasks": [
     {
+      "id": "task-parsed-1783312334474-581162-0",
+      "title": "Do dishes at 5.30pm",
+      "description": "Locally extracted task from text input.",
+      "duration": 30,
+      "priority": "medium",
+      "period": "today",
+      "category": "personal",
+      "timeOfDay": "Anytime",
+      "completed": false,
+      "scheduledTime": "13:30",
+      "timeFrozen": false
+    },
+    {
+      "id": "task-parsed-1783312285785-702181-0",
+      "title": "Do laundry",
+      "description": "",
+      "duration": 30,
+      "priority": "medium",
+      "period": "today",
+      "category": "personal",
+      "timeOfDay": "Evening",
+      "completed": false,
+      "scheduledTime": "17:00",
+      "timeFrozen": true
+    },
+    {
+      "id": "task-custom-1783308819890-749567",
+      "title": "Another task",
+      "description": "",
+      "duration": 30,
+      "priority": "medium",
+      "period": "today",
+      "category": "work",
+      "timeOfDay": "Morning",
+      "completed": true,
+      "scheduledTime": "08:36",
+      "timeFrozen": true
+    },
+    {
+      "id": "task-custom-1783308809103-664415",
+      "title": "A task",
+      "description": "",
+      "duration": 60,
+      "priority": "medium",
+      "period": "today",
+      "category": "work",
+      "timeOfDay": "Morning",
+      "completed": true,
+      "scheduledTime": "08:30",
+      "timeFrozen": true
+    },
+    {
       "id": "task-parsed-1783220612296-0",
       "title": "Review designs",
       "description": "Review the project designs.",
       "duration": 30,
       "priority": "medium",
-      "period": "yesterday",
+      "period": "today",
       "category": "work",
       "timeOfDay": "10:00 AM",
       "completed": false,
-      "scheduledTime": "12:00"
+      "scheduledTime": "11:00",
+      "timeFrozen": false
     },
     {
       "id": "task-parsed-1783138867020-0",
@@ -22,7 +75,8 @@
       "category": "work",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "11:00"
+      "scheduledTime": "07:32",
+      "timeFrozen": true
     },
     {
       "id": "task-parsed-1783138867020-1",
@@ -34,7 +88,8 @@
       "category": "work",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "14:10"
+      "scheduledTime": "08:02",
+      "timeFrozen": true
     },
     {
       "id": "task-parsed-1783138867020-2",
@@ -42,11 +97,12 @@
       "description": "Finish the next chapter of EoM.",
       "duration": 80,
       "priority": "medium",
-      "period": "yesterday",
+      "period": "today",
       "category": "learning",
       "timeOfDay": "Anytime",
       "completed": false,
-      "scheduledTime": "12:00"
+      "scheduledTime": "09:30",
+      "timeFrozen": false
     },
     {
       "id": "task-parsed-1782984650056-3",
@@ -58,7 +114,8 @@
       "category": "learning",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "19:00"
+      "scheduledTime": "08:32",
+      "timeFrozen": true
     },
     {
       "id": "task-parsed-1782983259961-3",
@@ -70,15 +127,27 @@
       "category": "work",
       "timeOfDay": "Anytime",
       "completed": true,
-      "scheduledTime": "09:00"
+      "scheduledTime": "09:00",
+      "timeFrozen": true
     }
   ],
-  "habits": [],
+  "habits": [
+    {
+      "id": "habit-1783310014885-914788",
+      "title": "Solve LeetCode",
+      "description": "",
+      "time": "08:00",
+      "duration": 15,
+      "category": "health",
+      "enabled": true,
+      "streak": 0
+    }
+  ],
   "settings": {
     "keepYesterdayTasks": true,
-    "daysCount": 0,
+    "daysCount": 1,
     "totalCompletedTasks": 0,
     "totalUncompletedTasks": 0,
-    "lastRolloverDate": "2026-07-03"
+    "lastRolloverDate": "2026-07-06"
   }
 }

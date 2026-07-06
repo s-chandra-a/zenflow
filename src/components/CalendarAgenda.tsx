@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Task, Habit } from "../types";
-import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, AlertCircle, Plus, ChevronRight, Lock, Unlock, Eye } from "lucide-react";
 import { motion } from "motion/react";
 
 interface CalendarAgendaProps {
@@ -13,6 +13,7 @@ interface CalendarAgendaProps {
   habits?: Habit[];
   mindHabits?: boolean;
   onHabitClick?: (habitId: string) => void;
+  onViewTask?: (taskId: string) => void;
 }
 
 const TIME_BUCKETS = [
@@ -59,6 +60,7 @@ export default function CalendarAgenda({
   habits = [],
   mindHabits = false,
   onHabitClick,
+  onViewTask,
 }: CalendarAgendaProps) {
   const filteredTasks = tasks.filter((t) => t.period === period);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -148,6 +150,23 @@ export default function CalendarAgenda({
           const hourTasks = filteredTasks.filter((t) => getTaskTimeBucket(t) === hr.value);
           const bucketHabits = getHabitsForBucket(hr.value);
 
+          const timeToMin = (tStr: string): number => {
+            if (!tStr) return 480;
+            const parts = tStr.split(":");
+            if (parts.length < 2) return 480;
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            return (isNaN(h) ? 8 : h) * 60 + (isNaN(m) ? 0 : m);
+          };
+
+          const hrMin = timeToMin(hr.value);
+          const continuingTasks = filteredTasks.filter((t) => {
+            if (t.completed) return false;
+            const startBucketMin = timeToMin(getTaskTimeBucket(t));
+            const endBucketMin = startBucketMin + t.duration;
+            return startBucketMin < hrMin && endBucketMin > hrMin;
+          });
+
           return (
             <div key={hr.value} className="relative group" id={`agenda-hour-${hr.value}`}>
               {/* Timeline dot */}
@@ -200,24 +219,84 @@ export default function CalendarAgenda({
                     );
                   })}
 
-                  {hourTasks.length === 0 && bucketHabits.length === 0 ? (
+                  {hourTasks.length === 0 && bucketHabits.length === 0 && continuingTasks.length === 0 ? (
                     <div className="text-[11px] text-nature-400 dark:text-nature-500 italic py-1 hover:text-nature-600 dark:hover:text-nature-300 transition-colors flex items-center gap-1.5">
                       No events scheduled
                     </div>
                   ) : (
-                    hourTasks.map((task) => (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`p-3.5 rounded-xl border transition-all duration-200 group/card relative ${
-                          task.completed
-                            ? "bg-emerald-50/20 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/30 opacity-70"
-                            : task.priority === "high"
-                            ? "bg-white dark:bg-nature-900 border-rose-200 dark:border-rose-950 hover:border-rose-300 dark:hover:border-rose-900"
-                            : "bg-white dark:bg-nature-900 border-nature-200 dark:border-nature-800 hover:border-nature-300 dark:hover:border-nature-750 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
-                        }`}
-                      >
+                    <>
+                      {continuingTasks.map((ct) => (
+                        <div
+                          key={`continuing-${ct.id}-${hr.value}`}
+                          onClick={() => onSelectTaskWorkflow(ct)}
+                          className="py-1.5 px-3 rounded-lg bg-sage-50/10 dark:bg-sage-950/5 flex items-center justify-between text-nature-600 dark:text-nature-450 cursor-pointer select-none hover:bg-sage-50/20 dark:hover:bg-sage-950/10 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-sage-500 font-bold uppercase tracking-wider font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-sage-500" />
+                              <span>In Progress</span>
+                            </span>
+                            <span className="text-xs font-semibold text-nature-800 dark:text-nature-200 truncate max-w-[200px]">
+                              {ct.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-sage-500">
+                            <span>Busy</span>
+                            <span>↑</span>
+                          </div>
+                        </div>
+                      ))}
+                      {hourTasks.map((task) => {
+                        const checkTaskOverlap = (t: Task) => {
+                          if (t.completed) return false;
+                          if (!t.scheduledTime) return false;
+                          const [th, tm] = t.scheduledTime.split(":").map(Number);
+                          const tStart = th * 60 + tm;
+                          const tEnd = tStart + t.duration;
+
+                          const otherTasks = filteredTasks.filter(o => o.id !== t.id && o.scheduledTime && !o.completed);
+                          for (const other of otherTasks) {
+                            const [oh, om] = other.scheduledTime!.split(":").map(Number);
+                            const oStart = oh * 60 + om;
+                            const oEnd = oStart + other.duration;
+
+                            if (tStart < oEnd && tEnd > oStart) {
+                              return true;
+                            }
+                          }
+
+                          if (mindHabits && period !== 'yesterday' && habits) {
+                            const activeHabits = habits.filter(h => h.enabled);
+                            for (const h of activeHabits) {
+                              const [hH, hM] = h.time.split(":").map(Number);
+                              const oStart = hH * 60 + hM;
+                              const oEnd = oStart + h.duration;
+
+                              if (tStart < oEnd && tEnd > oStart) {
+                                return true;
+                              }
+                            }
+                          }
+                          return false;
+                        };
+
+                      const hasOverlap = checkTaskOverlap(task);
+
+                      return (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`p-3.5 rounded-xl border transition-all duration-200 group/card relative ${
+                            task.completed
+                              ? "bg-emerald-50/20 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/30 opacity-70"
+                              : hasOverlap
+                              ? "bg-rose-500/5 dark:bg-rose-950/5 border-rose-350 dark:border-rose-900 hover:border-rose-450 dark:hover:border-rose-800"
+                              : task.priority === "high"
+                              ? "bg-white dark:bg-nature-900 border-rose-200 dark:border-rose-950 hover:border-rose-300 dark:hover:border-rose-900"
+                              : "bg-white dark:bg-nature-900 border-nature-200 dark:border-nature-800 hover:border-nature-300 dark:hover:border-nature-750 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                          }`}
+                        >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-2.5">
                             <button
@@ -230,14 +309,23 @@ export default function CalendarAgenda({
                             >
                               <CheckCircle2 className={`w-4 h-4 ${task.completed ? "fill-emerald-400/10" : ""}`} />
                             </button>
-                            <div>
-                              <h4
-                                className={`text-sm font-bold ${
-                                  task.completed ? "line-through text-nature-400 dark:text-nature-500" : "text-nature-950 dark:text-white"
-                                }`}
-                              >
-                                {task.title}
-                              </h4>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <button
+                                  onClick={() => onViewTask && onViewTask(task.id)}
+                                  className="p-0.5 rounded text-nature-400 hover:text-nature-700 dark:hover:text-nature-250 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                                  title="View in Tasks List"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <h4
+                                  className={`text-sm font-bold truncate ${
+                                    task.completed ? "line-through text-nature-400 dark:text-nature-500" : "text-nature-950 dark:text-white"
+                                  }`}
+                                >
+                                  {task.title}
+                                </h4>
+                              </div>
                               {task.description && (
                                 <p className="text-xs text-nature-550 dark:text-nature-400 mt-0.5 line-clamp-1">
                                   {task.description}
@@ -248,11 +336,16 @@ export default function CalendarAgenda({
                                   <Clock className="w-3 h-3 text-sage-500" />
                                   {task.duration}m
                                 </span>
-                                {task.timeFrozen && (
-                                  <span className="flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold uppercase flex items-center">
-                                    <Lock className="w-2.5 h-2.5" /> Frozen
-                                  </span>
-                                )}
+                                 {task.timeFrozen && (
+                                   <span className="flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold uppercase flex items-center">
+                                     <Lock className="w-2.5 h-2.5" /> Frozen
+                                   </span>
+                                 )}
+                                 {hasOverlap && (
+                                   <span className="flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold uppercase flex items-center shrink-0">
+                                     <AlertCircle className="w-2.5 h-2.5 animate-pulse" /> Overlap
+                                   </span>
+                                 )}
                                 <span
                                   className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-md font-bold ${
                                     task.priority === "high"
@@ -322,7 +415,9 @@ export default function CalendarAgenda({
                           </div>
                         </div>
                       </motion.div>
-                    ))
+                      );
+                    })}
+                    </>
                   )}
                 </div>
               </div>

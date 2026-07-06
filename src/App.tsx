@@ -90,6 +90,21 @@ export default function App() {
   const [dbConfigError, setDbConfigError] = useState<string | null>(null);
   const [dbConfigSuccess, setDbConfigSuccess] = useState<string | null>(null);
   const [isConfiguringDb, setIsConfiguringDb] = useState(false);
+  const [fallbackNotifications, setFallbackNotifications] = useState<{ id: string; type: string; title: string; message: string; timestamp: string }[]>([]);
+
+  const addFallbackNotification = (type: string, title: string, message: string) => {
+    setFallbackNotifications(prev => {
+      if (prev.some(n => n.type === type && n.message === message)) return prev;
+      const newNotif = {
+        id: `${type}-${Date.now()}`,
+        type,
+        title,
+        message,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+      return [newNotif, ...prev];
+    });
+  };
 
   // AI Scheduler settings states
   const [showSchedulerSettings, setShowSchedulerSettings] = useState(false);
@@ -107,6 +122,7 @@ export default function App() {
   const [clickedStreakId, setClickedStreakId] = useState<string | null>(null);
   const [mindHabits, setMindHabits] = useState(() => localStorage.getItem("zen_mind_habits") !== "false");
   const [highlightedHabitId, setHighlightedHabitId] = useState<string | null>(null);
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
 
   const checkDbStatus = async () => {
     try {
@@ -115,6 +131,13 @@ export default function App() {
         const data = await res.json();
         setDbStatus(data);
         setDbUriInput(data.uri || "");
+        if (data.type === 'local' || !data.connected) {
+          addFallbackNotification(
+            'mongodb',
+            'Database Local Fallback',
+            'MongoDB database is offline or unconfigured. Zen Flow has fallen back to the local file database.'
+          );
+        }
       }
     } catch (e) {
       console.error("Failed to fetch DB status:", e);
@@ -310,7 +333,13 @@ export default function App() {
           const todayCompleted = serverTasks.filter(t => t.period === 'today' && t.completed).length;
           const todayUncompleted = serverTasks.filter(t => t.period === 'today' && !t.completed).length;
 
-          const newDaysCount = serverSettings.daysCount + 1;
+          // Calculate the number of days since last rollover to catch up
+          const lastDate = new Date(serverSettings.lastRolloverDate + "T00:00:00");
+          const currDate = new Date(currentHabitDay + "T00:00:00");
+          const diffTime = currDate.getTime() - lastDate.getTime();
+          const diffDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+
+          const newDaysCount = serverSettings.daysCount + diffDays;
           const newTotalCompleted = serverSettings.totalCompletedTasks + todayCompleted;
           const newTotalUncompleted = serverSettings.totalUncompletedTasks + todayUncompleted;
           const newLastRolloverDate = currentHabitDay;
@@ -769,6 +798,22 @@ export default function App() {
     }, 150);
   };
 
+  const handleCalendarTaskView = (taskId: string) => {
+    setIsCalendarView(false);
+    setActiveMobileTab('tasks');
+    setHighlightedTaskId(taskId);
+    setTimeout(() => {
+      setHighlightedTaskId(null);
+    }, 2000);
+
+    setTimeout(() => {
+      const cardEl = document.getElementById(`task-card-${taskId}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  };
+
   const handleJamInToday = (taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => {
@@ -903,14 +948,26 @@ export default function App() {
                 ...t, 
                 priority: update.priority || t.priority,
                 scheduledTime: update.scheduledTime || t.scheduledTime,
-                period: updatedPeriod
+                period: updatedPeriod,
+                timeFrozen: update.timeFrozen !== undefined ? update.timeFrozen : t.timeFrozen
               };
             }
             return t;
           });
         });
 
-        if (overflowCount > 0) {
+        if (data.isFallback) {
+          addFallbackNotification(
+            'gemini',
+            'AI Scheduler Offline Fallback',
+            'Could not reach Google AI Studio. Tasks scheduled using the local sorting algorithm.'
+          );
+          triggerNotification(
+            "Schedule Generated (Fallback)",
+            "Offline scheduler fallback has organized your tasks.",
+            "warning"
+          );
+        } else if (overflowCount > 0) {
           triggerNotification(
             "Schedule Overflow",
             `${overflowCount} tasks did not fit today and have been moved to the Schedule Overflow Tray at the bottom.`,
@@ -956,11 +1013,24 @@ export default function App() {
 
       const data = await response.json();
       setYesterdaySummary(data);
-      triggerNotification(
-        "Retrospective Prepared",
-        "Your personalized AI Daily retrospective has been compiled by your coach.",
-        "success"
-      );
+      if (data.isFallback) {
+        addFallbackNotification(
+          'gemini',
+          'Retrospective Summary Offline Fallback',
+          'Could not reach Google AI Studio to generate your daily summary. Loaded offline template coaching notes.'
+        );
+        triggerNotification(
+          "Retrospective Prepared (Fallback)",
+          "Your offline coaching retrospective notes have been compiled.",
+          "warning"
+        );
+      } else {
+        triggerNotification(
+          "Retrospective Prepared",
+          "Your personalized AI Daily retrospective has been compiled by your coach.",
+          "success"
+        );
+      }
       if (data.tokenUsage) {
         recordRequest(data.tokenUsage.totalTokens || 0);
       }
@@ -1157,11 +1227,24 @@ export default function App() {
         // Merge or replace tasks based on choice
         setTasks((prev) => [...parsedTasks, ...prev]);
         setInputText("");
-        triggerNotification(
-          "Tasks Parsed",
-          `Gemini successfully parsed ${parsedTasks.length} new tasks into your schedule board!`,
-          "success"
-        );
+        if (data.isFallback) {
+          addFallbackNotification(
+            'gemini',
+            'AI Task Parser Offline Fallback',
+            'Could not reach Google AI Studio. Text list parsed using local pattern extraction.'
+          );
+          triggerNotification(
+            "Tasks Parsed (Fallback)",
+            `Local parser has extracted ${parsedTasks.length} tasks.`,
+            "warning"
+          );
+        } else {
+          triggerNotification(
+            "Tasks Parsed",
+            `Gemini successfully parsed ${parsedTasks.length} new tasks into your schedule board!`,
+            "success"
+          );
+        }
         if (data.tokenUsage) {
           recordRequest(data.tokenUsage.totalTokens || 0);
         }
@@ -1418,7 +1501,51 @@ export default function App() {
       </header>
 
       {/* Primary Layout Wrapper */}
-      <main className="flex-1 flex flex-col lg:flex-row h-full max-w-[1600px] mx-auto w-full p-4 md:p-6 pb-28 lg:pb-6 gap-6 relative">
+      <main className="flex-1 flex flex-col h-full max-w-[1600px] mx-auto w-full p-4 md:p-6 pb-28 lg:pb-6 gap-6 relative">
+        
+        {/* System Offline / Fallback Warnings Panel */}
+        {fallbackNotifications.length > 0 && (
+          <div className="w-full flex flex-col gap-2.5 z-40">
+            <AnimatePresence>
+              {fallbackNotifications.map((notif) => (
+                <motion.div
+                  key={notif.id}
+                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 dark:border-rose-900/40 rounded-xl p-3.5 flex items-start justify-between gap-3 shadow-md backdrop-blur-md"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 p-1 rounded bg-rose-500/20 text-rose-600 dark:text-rose-450 shrink-0">
+                      <AlertCircle className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-rose-800 dark:text-rose-200 uppercase tracking-wider font-mono">
+                          {notif.title}
+                        </h4>
+                        <span className="text-[10px] font-mono text-rose-500/80 dark:text-rose-400/80 bg-rose-500/15 px-1.5 py-0.5 rounded font-bold">
+                          {notif.timestamp}
+                        </span>
+                      </div>
+                      <p className="text-xs text-rose-700/90 dark:text-rose-300/80 mt-1 font-medium leading-relaxed">
+                        {notif.message}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setFallbackNotifications(prev => prev.filter(n => n.id !== notif.id))}
+                    className="p-1 rounded-lg text-rose-400 hover:text-rose-600 dark:hover:text-rose-200 hover:bg-rose-500/15 transition-all cursor-pointer shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col lg:flex-row gap-6">
         
         {/* Left Column: Input and Schedule Control */}
         <div className={`flex-1 flex flex-col space-y-6 min-w-0 ${activeMobileTab === 'tasks' || activeMobileTab === 'input' ? 'flex' : 'hidden lg:flex'}`}>
@@ -1432,7 +1559,7 @@ export default function App() {
                   Dump Tasks & Schedulers
                 </h2>
               </div>
-              <span className="text-[10px] text-nature-500 dark:text-nature-400 font-medium">
+              <span className="text-[10px] text-nature-500 dark:text-nature-400 font-medium hidden sm:block">
                 Drag-and-Drop .txt file or paste raw thoughts
               </span>
             </div>
@@ -2099,6 +2226,7 @@ export default function App() {
                   habits={habits}
                   mindHabits={mindHabits}
                   onHabitClick={handleCalendarHabitClick}
+                  onViewTask={handleCalendarTaskView}
                 />
               ) : (
                 /* Kanban List Column View */
@@ -2152,6 +2280,7 @@ export default function App() {
                             onDeleteTask={handleDeleteTask}
                             onEditTask={handleStartEdit}
                             onMigrateTask={handleMigrateTask}
+                            isHighlighted={highlightedTaskId === task.id}
                           />
                         ))
                     )}
@@ -2213,6 +2342,7 @@ export default function App() {
                   bypassAI={bypassAI}
                   onAddTokens={recordRequest}
                   model={selectedAiModel}
+                  onAddFallbackWarning={addFallbackNotification}
                 />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-nature-500 dark:text-nature-400 py-24 bg-nature-50/10 dark:bg-nature-950/20">
@@ -2594,7 +2724,8 @@ export default function App() {
             )}
           </div>
         </div>
-      </main>
+      </div>
+    </main>
 
       {/* Exquisite Toast Alerts Banner */}
       <AnimatePresence>
