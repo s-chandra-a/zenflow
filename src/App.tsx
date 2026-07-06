@@ -609,7 +609,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Task Creator / Editor States
-  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isAddingTask, setIsAddingTask] = useState(typeof window !== "undefined" && window.innerWidth < 1024);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
@@ -1227,6 +1227,7 @@ export default function App() {
         // Merge or replace tasks based on choice
         setTasks((prev) => [...parsedTasks, ...prev]);
         setInputText("");
+        setActiveMobileTab('tasks');
         if (data.isFallback) {
           addFallbackNotification(
             'gemini',
@@ -1384,6 +1385,7 @@ export default function App() {
     setFormTimeOfDay("Morning");
     setFormScheduledTime("");
     setFormTimeFrozen(false);
+    setActiveMobileTab('tasks');
   };
 
   const handleStartEdit = (task: Task) => {
@@ -1397,6 +1399,9 @@ export default function App() {
     setFormTimeOfDay(task.timeOfDay);
     setFormScheduledTime(task.scheduledTime || "");
     setFormTimeFrozen(!!task.timeFrozen);
+    if (window.innerWidth < 1024) {
+      setActiveMobileTab('input');
+    }
   };
 
   // Progress & Stats Metrics
@@ -1657,7 +1662,182 @@ export default function App() {
                 <span>{parseError}</span>
               </div>
             )}
+
+            {/* Mobile View: Quick Add button to create tasks manually inside Add tab */}
+            <div className="lg:hidden mt-4 pt-4 border-t border-nature-150 dark:border-nature-850 flex items-center justify-between">
+              <span className="text-[11px] uppercase font-bold text-nature-500 dark:text-nature-455 font-mono">Or create manually</span>
+              <button
+                onClick={() => setIsAddingTask(!isAddingTask)}
+                className="px-3 py-1.5 bg-nature-100 hover:bg-nature-200/80 dark:bg-nature-800 dark:hover:bg-nature-750 border border-nature-300 dark:border-nature-700 rounded-xl text-nature-700 hover:text-nature-900 dark:text-nature-200 transition-all flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+              >
+                {isAddingTask ? (
+                  <X className="w-3.5 h-3.5" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                <span>{isAddingTask ? "Cancel" : "Quick Add"}</span>
+              </button>
+            </div>
           </div>
+
+          {/* Collapsible Add/Edit Form */}
+          <AnimatePresence>
+            {(isAddingTask || editingTask) && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleSaveTask}
+                className={`bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-2xl p-5 overflow-hidden space-y-4 shadow-sm transition-colors duration-300 mb-2 ${
+                  activeMobileTab === 'input' ? 'block' : 'hidden lg:block'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-sage-600 dark:text-sage-400 uppercase tracking-wider font-mono">
+                    {editingTask ? "Modify Task Parameters" : "Draft Custom Task"}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingTask(false);
+                      setEditingTask(null);
+                    }}
+                    className="text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Task Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      placeholder="Draft team strategy summary"
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-400 dark:placeholder-nature-600 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Estimated Duration (m)</label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="480"
+                      value={formDuration}
+                      onChange={(e) => setFormDuration(parseInt(e.target.value) || 30)}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Notes / Directives</label>
+                  <textarea
+                    value={formDesc}
+                    onChange={(e) => setFormDesc(e.target.value)}
+                    placeholder="Add auxiliary comments or specific reminders"
+                    className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-400 dark:placeholder-nature-600 min-h-[60px] focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Priority</label>
+                    <select
+                      value={formPriority}
+                      onChange={(e) => setFormPriority(e.target.value as any)}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
+                    >
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Day</label>
+                    <select
+                      value={formPeriod}
+                      onChange={(e) => setFormPeriod(e.target.value as any)}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
+                    >
+                      <option value="yesterday">Yesterday</option>
+                      <option value="today">Today</option>
+                      <option value="tomorrow">Tomorrow</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Time Bucket</label>
+                    <select
+                      value={formTimeOfDay}
+                      onChange={(e) => setFormTimeOfDay(e.target.value)}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
+                    >
+                      <option value="Morning">Morning</option>
+                      <option value="Afternoon">Afternoon</option>
+                      <option value="Evening">Evening</option>
+                      <option value="Anytime">Anytime</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Specific Time</label>
+                    <input
+                      type="time"
+                      value={formScheduledTime}
+                      onChange={(e) => {
+                        setFormScheduledTime(e.target.value);
+                        if (e.target.value) setFormTimeFrozen(true);
+                      }}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-850 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 flex flex-col justify-end">
+                    <div className="flex items-center gap-2 h-[38px] pb-2">
+                      <input
+                        type="checkbox"
+                        id="formTimeFrozen"
+                        checked={formTimeFrozen}
+                        onChange={(e) => setFormTimeFrozen(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded text-sage-600 border-nature-300 focus:ring-sage-500 cursor-pointer"
+                      />
+                      <label htmlFor="formTimeFrozen" className="text-xs font-bold text-nature-750 dark:text-nature-200 cursor-pointer select-none">
+                        Freeze Time
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Category</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
+                    >
+                      <option value="work">Work</option>
+                      <option value="personal">Personal</option>
+                      <option value="health">Health</option>
+                      <option value="learning">Learning</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-sage-600 hover:bg-sage-700 active:bg-sage-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sage-600/10 cursor-pointer"
+                >
+                  {editingTask ? "Apply Parameter Updates" : "Save Task Details"}
+                </button>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
           {/* Task Completion Progress Bar Card */}
           <div className={`bg-white dark:bg-nature-900 rounded-2xl border border-nature-200/80 dark:border-nature-800 p-5 shadow-xs mb-2 transition-colors duration-300 ${activeMobileTab === 'tasks' ? 'block' : 'hidden lg:block'}`}>
@@ -1779,6 +1959,13 @@ export default function App() {
                             <Sparkles className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400" />
                             Scheduler Settings
                           </h4>
+                          <button
+                            onClick={() => setShowSchedulerSettings(false)}
+                            className="p-2 rounded-md text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer flex items-center justify-center"
+                            title="Close"
+                          >
+                            <X className="w-4 h-4 shrink-0" />
+                          </button>
                         </div>
 
                         {/* Breaks Option */}
@@ -1872,7 +2059,7 @@ export default function App() {
 
                 <button
                   onClick={() => setIsAddingTask(!isAddingTask)}
-                  className="p-2 bg-nature-100 hover:bg-nature-200/80 border border-nature-300 rounded-xl text-nature-700 hover:text-nature-900 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                  className="hidden lg:flex p-2 bg-nature-100 hover:bg-nature-200/80 border border-nature-300 rounded-xl text-nature-700 hover:text-nature-900 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                   id="add-task-toggle-btn"
                 >
                   <Plus className="w-4 h-4" />
@@ -1902,162 +2089,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Collapsible Add/Edit Form */}
-            <AnimatePresence>
-              {(isAddingTask || editingTask) && (
-                <motion.form
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  onSubmit={handleSaveTask}
-                  className="bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-2xl p-5 overflow-hidden space-y-4 shadow-sm transition-colors duration-300"
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-sage-600 dark:text-sage-400 uppercase tracking-wider font-mono">
-                      {editingTask ? "Modify Task Parameters" : "Draft Custom Task"}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingTask(false);
-                        setEditingTask(null);
-                      }}
-                      className="text-nature-400 hover:text-nature-600 dark:hover:text-nature-200 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Task Title</label>
-                      <input
-                        type="text"
-                        required
-                        value={formTitle}
-                        onChange={(e) => setFormTitle(e.target.value)}
-                        placeholder="Draft team strategy summary"
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-400 dark:placeholder-nature-600 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Estimated Duration (m)</label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="480"
-                        value={formDuration}
-                        onChange={(e) => setFormDuration(parseInt(e.target.value) || 30)}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Notes / Directives</label>
-                    <textarea
-                      value={formDesc}
-                      onChange={(e) => setFormDesc(e.target.value)}
-                      placeholder="Add auxiliary comments or specific reminders"
-                      className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-400 dark:placeholder-nature-600 min-h-[60px] focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Priority</label>
-                      <select
-                        value={formPriority}
-                        onChange={(e) => setFormPriority(e.target.value as any)}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
-                      >
-                        <option value="low">Low Priority</option>
-                        <option value="medium">Medium Priority</option>
-                        <option value="high">High Priority</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Day</label>
-                      <select
-                        value={formPeriod}
-                        onChange={(e) => setFormPeriod(e.target.value as any)}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
-                      >
-                        <option value="yesterday">Yesterday</option>
-                        <option value="today">Today</option>
-                        <option value="tomorrow">Tomorrow</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Time Bucket</label>
-                      <select
-                        value={formTimeOfDay}
-                        onChange={(e) => setFormTimeOfDay(e.target.value)}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
-                      >
-                        <option value="Morning">Morning</option>
-                        <option value="Afternoon">Afternoon</option>
-                        <option value="Evening">Evening</option>
-                        <option value="Anytime">Anytime</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Specific Time</label>
-                      <input
-                        type="time"
-                        value={formScheduledTime}
-                        onChange={(e) => {
-                          setFormScheduledTime(e.target.value);
-                          if (e.target.value) setFormTimeFrozen(true);
-                        }}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-850 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 flex flex-col justify-end">
-                      <div className="flex items-center gap-2 h-[38px] pb-2">
-                        <input
-                          type="checkbox"
-                          id="formTimeFrozen"
-                          checked={formTimeFrozen}
-                          onChange={(e) => setFormTimeFrozen(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded text-sage-600 border-nature-300 focus:ring-sage-500 cursor-pointer"
-                        />
-                        <label htmlFor="formTimeFrozen" className="text-xs font-bold text-nature-750 dark:text-nature-200 cursor-pointer select-none">
-                          Freeze Time
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-bold text-nature-500 dark:text-nature-400 font-mono">Category</label>
-                      <select
-                        value={formCategory}
-                        onChange={(e) => setFormCategory(e.target.value)}
-                        className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
-                      >
-                        <option value="work">Work</option>
-                        <option value="personal">Personal</option>
-                        <option value="health">Health</option>
-                        <option value="learning">Learning</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-sage-600 hover:bg-sage-700 active:bg-sage-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sage-600/10"
-                  >
-                    {editingTask ? "Apply Parameter Updates" : "Save Task Details"}
-                  </button>
-                </motion.form>
-              )}
-            </AnimatePresence>
 
             {/* BOARD MAIN VIEW CONTAINER */}
             <div>
@@ -2360,123 +2392,135 @@ export default function App() {
                     Recurring Habits
                   </h4>
                   <button
-                    onClick={() => setIsAddingHabit(!isAddingHabit)}
+                    onClick={() => setIsAddingHabit(true)}
                     className="px-2 py-1 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <span>{isAddingHabit ? "Close" : "Add Habit"}</span>
-                    {!isAddingHabit && <Plus className="w-3 h-3" />}
+                    <span>Add Habit</span>
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
 
-                {/* Add / Edit Habit Form */}
+                {/* Add / Edit Habit Form Modal */}
                 <AnimatePresence>
                   {(isAddingHabit || editingHabit) && (
-                    <motion.form
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      onSubmit={handleSaveHabit}
-                      className="bg-nature-50/50 dark:bg-nature-950/40 border border-nature-200 dark:border-nature-800 rounded-xl p-3 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-sage-600 dark:text-sage-400 font-mono">
-                          {editingHabit ? "Edit Habit" : "New Habit"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAddingHabit(false);
-                            setEditingHabit(null);
-                          }}
-                          className="text-nature-450 hover:text-nature-600"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Name</label>
-                        <input
-                          type="text"
-                          required
-                          value={habitFormTitle}
-                          onChange={(e) => setHabitFormTitle(e.target.value)}
-                          placeholder="e.g. Drink Water"
-                          className="w-full bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-lg px-2.5 py-1.5 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-455 dark:placeholder-nature-600 focus:outline-none focus:border-sage-500"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Time</label>
-                          <input
-                            type="time"
-                            required
-                            value={habitFormTime}
-                            onChange={(e) => setHabitFormTime(e.target.value)}
-                            className="w-full bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-lg px-2 py-1 text-xs text-nature-800 dark:text-nature-100 focus:outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Duration</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            max="240"
-                            value={habitFormDuration}
-                            onChange={(e) => setHabitFormDuration(parseInt(e.target.value) || 15)}
-                            className="w-full bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-lg px-2 py-1 text-xs text-nature-800 dark:text-nature-100 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Description</label>
-                        <textarea
-                          value={habitFormDesc}
-                          onChange={(e) => setHabitFormDesc(e.target.value)}
-                          placeholder="Routine notes..."
-                          className="w-full bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-lg px-2 py-1 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-455 min-h-[40px] focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Category</label>
-                          <select
-                            value={habitFormCategory}
-                            onChange={(e) => setHabitFormCategory(e.target.value)}
-                            className="w-full bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-lg p-1 text-xs text-nature-800 dark:text-nature-100"
-                          >
-                            <option value="health">Health</option>
-                            <option value="work">Work</option>
-                            <option value="learning">Learning</option>
-                            <option value="personal">Personal</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center gap-1.5 pt-4">
-                          <input
-                            type="checkbox"
-                            id="habitFormEnabledRight"
-                            checked={habitFormEnabled}
-                            onChange={(e) => setHabitFormEnabled(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded text-sage-600 cursor-pointer"
-                          />
-                          <label htmlFor="habitFormEnabledRight" className="text-xs font-bold text-nature-750 dark:text-nature-200 cursor-pointer select-none">
-                            Active
-                          </label>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-1.5 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                      {/* Backdrop Click to Close */}
+                      <div 
+                        className="fixed inset-0 cursor-default" 
+                        onClick={() => {
+                          setIsAddingHabit(false);
+                          setEditingHabit(null);
+                        }}
+                      />
+                      
+                      <motion.form
+                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                        onSubmit={handleSaveHabit}
+                        className="relative w-full max-w-md bg-white dark:bg-nature-900 border border-nature-250 dark:border-nature-800 rounded-2xl p-6 shadow-2xl space-y-4 transition-colors duration-300 text-left"
                       >
-                        {editingHabit ? "Update Habit" : "Save Habit"}
-                      </button>
-                    </motion.form>
+                        <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-850 pb-3">
+                          <span className="text-sm font-bold text-sage-600 dark:text-sage-400 font-mono">
+                            {editingHabit ? "Modify Habit Details" : "Register Recurring Habit"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddingHabit(false);
+                              setEditingHabit(null);
+                            }}
+                            className="p-1.5 rounded-lg text-nature-450 hover:text-nature-600 dark:hover:text-nature-200 hover:bg-nature-100 dark:hover:bg-nature-800 transition-colors cursor-pointer flex items-center justify-center"
+                            title="Close modal"
+                          >
+                            <X className="w-5 h-5 shrink-0" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={habitFormTitle}
+                            onChange={(e) => setHabitFormTitle(e.target.value)}
+                            placeholder="e.g. Drink Water"
+                            className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3.5 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-455 dark:placeholder-nature-600 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Time</label>
+                            <input
+                              type="time"
+                              required
+                              value={habitFormTime}
+                              onChange={(e) => setHabitFormTime(e.target.value)}
+                              className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3 py-1.5 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Duration (m)</label>
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              max="240"
+                              value={habitFormDuration}
+                              onChange={(e) => setHabitFormDuration(parseInt(e.target.value) || 15)}
+                              className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3 py-1.5 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Description</label>
+                          <textarea
+                            value={habitFormDesc}
+                            onChange={(e) => setHabitFormDesc(e.target.value)}
+                            placeholder="Routine notes..."
+                            className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl px-3 py-2 text-xs text-nature-800 dark:text-nature-100 placeholder-nature-455 min-h-[60px] focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950 transition-colors"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-nature-555 dark:text-nature-400 font-mono">Category</label>
+                            <select
+                              value={habitFormCategory}
+                              onChange={(e) => setHabitFormCategory(e.target.value)}
+                              className="w-full bg-nature-50 dark:bg-nature-950 border border-nature-250 dark:border-nature-800 rounded-xl p-2 text-xs text-nature-800 dark:text-nature-100 focus:outline-none focus:border-sage-500 focus:bg-white dark:focus:bg-nature-950"
+                            >
+                              <option value="health">Health</option>
+                              <option value="work">Work</option>
+                              <option value="learning">Learning</option>
+                              <option value="personal">Personal</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1.5 pt-4">
+                            <input
+                              type="checkbox"
+                              id="habitFormEnabledRight"
+                              checked={habitFormEnabled}
+                              onChange={(e) => setHabitFormEnabled(e.target.checked)}
+                              className="w-3.5 h-3.5 rounded text-sage-600 cursor-pointer"
+                            />
+                            <label htmlFor="habitFormEnabledRight" className="text-xs font-bold text-nature-750 dark:text-nature-200 cursor-pointer select-none">
+                              Active Habit
+                            </label>
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-2.5 bg-sage-600 hover:bg-sage-700 active:bg-sage-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sage-600/10 cursor-pointer mt-2"
+                        >
+                          {editingHabit ? "Update Habit" : "Save Habit"}
+                        </button>
+                      </motion.form>
+                    </div>
                   )}
                 </AnimatePresence>
 
@@ -2777,7 +2821,7 @@ export default function App() {
         <div className="lg:hidden flex flex-col gap-3 items-end">
           {/* Add + AI Pill Button (Opens Add tab) */}
           <button
-            onClick={() => setActiveMobileTab('input')}
+            onClick={() => { setActiveMobileTab('input'); setIsAddingTask(true); }}
             className={`h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer ${
               activeMobileTab === 'input'
                 ? "bg-sage-600 border-sage-500 text-white"
@@ -2970,7 +3014,7 @@ export default function App() {
           <div className="w-full max-w-md bg-white/80 dark:bg-nature-900/80 backdrop-blur-lg border border-nature-200/80 dark:border-nature-800/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
             {/* Dump / Input Tab */}
             <button
-              onClick={() => setActiveMobileTab('input')}
+              onClick={() => { setActiveMobileTab('input'); setIsAddingTask(true); }}
               className={`flex-1 flex flex-col items-center gap-1 py-1 rounded-xl transition-all cursor-pointer ${
                 activeMobileTab === 'input'
                   ? "text-sage-600 dark:text-sage-400 font-bold scale-105"
