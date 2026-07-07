@@ -38,7 +38,8 @@ const SettingsSchema = new Schema({
   daysCount: { type: Number, default: 0 },
   totalCompletedTasks: { type: Number, default: 0 },
   totalUncompletedTasks: { type: Number, default: 0 },
-  lastRolloverDate: { type: String, default: "" }
+  lastRolloverDate: { type: String, default: "" },
+  rolloverHour: { type: Number, default: 8 }
 }, { timestamps: true });
 
 let TaskModel: mongoose.Model<any>;
@@ -133,7 +134,8 @@ function initLocalDB() {
     daysCount: 0,
     totalCompletedTasks: 0,
     totalUncompletedTasks: 0,
-    lastRolloverDate: ""
+    lastRolloverDate: "",
+    rolloverHour: 8
   };
 
   if (!fs.existsSync(LOCAL_DB_PATH)) {
@@ -177,7 +179,8 @@ export async function getSettings(): Promise<any> {
     daysCount: 0,
     totalCompletedTasks: 0,
     totalUncompletedTasks: 0,
-    lastRolloverDate: ""
+    lastRolloverDate: "",
+    rolloverHour: 8
   };
 
   if (isMongoConnected) {
@@ -206,7 +209,8 @@ export async function syncSettings(settings: any): Promise<void> {
     daysCount: typeof settings.daysCount === "number" ? settings.daysCount : 0,
     totalCompletedTasks: typeof settings.totalCompletedTasks === "number" ? settings.totalCompletedTasks : 0,
     totalUncompletedTasks: typeof settings.totalUncompletedTasks === "number" ? settings.totalUncompletedTasks : 0,
-    lastRolloverDate: typeof settings.lastRolloverDate === "string" ? settings.lastRolloverDate : ""
+    lastRolloverDate: typeof settings.lastRolloverDate === "string" ? settings.lastRolloverDate : "",
+    rolloverHour: typeof settings.rolloverHour === "number" ? settings.rolloverHour : 8
   };
 
   if (isMongoConnected) {

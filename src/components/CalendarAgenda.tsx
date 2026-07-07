@@ -69,9 +69,9 @@ export default function CalendarAgenda({
   const expandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isTimelineCollapsed, setIsTimelineCollapsed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("zen_timeline_collapsed") === "true";
+      return localStorage.getItem("zen_timeline_collapsed") !== "false";
     }
-    return false;
+    return true;
   });
 
   const handleTaskClick = (taskId: string, e: React.MouseEvent) => {
@@ -519,7 +519,7 @@ export default function CalendarAgenda({
             return next;
           });
         }}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:absolute lg:bottom-4 lg:right-4 lg:left-auto lg:translate-x-0 lg:z-10 w-10 h-10 bg-white/95 dark:bg-nature-900/95 hover:bg-white dark:hover:bg-nature-800 text-nature-700 dark:text-nature-200 rounded-full shadow-lg border border-nature-200 dark:border-nature-800 cursor-pointer transition-all hover:scale-105 active:scale-[0.93] flex items-center justify-center select-none"
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:absolute lg:bottom-4 lg:right-4 lg:left-auto lg:translate-x-0 lg:z-10 w-10 h-10 bg-white/70 dark:bg-nature-900/70 backdrop-blur-lg hover:bg-white dark:hover:bg-nature-800 text-nature-700 dark:text-nature-200 rounded-full shadow-lg border border-nature-200/80 dark:border-nature-800/80 cursor-pointer transition-all hover:scale-105 active:scale-[0.93] flex items-center justify-center select-none"
         title={isTimelineCollapsed ? "Show all hours (Expand)" : "Hide empty slots (Collapse)"}
       >
         {isTimelineCollapsed ? (

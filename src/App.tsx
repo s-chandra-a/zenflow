@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, Upload, Calendar, List, Sparkles, Plus, Clock, 
   Settings, CheckCircle, CheckCircle2, ChevronRight, Play, Loader2, AlertCircle, X,
-  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy, AlertTriangle
+  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Task, InAppNotification, Habit } from "./types";
@@ -124,6 +124,16 @@ export default function App() {
   const [mindHabits, setMindHabits] = useState(() => localStorage.getItem("zen_mind_habits") !== "false");
   const [highlightedHabitId, setHighlightedHabitId] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [rolloverHour, setRolloverHour] = useState(8);
+  const [showForceRolloverWarning, setShowForceRolloverWarning] = useState(false);
+
+  const getHabitDay = (d: Date) => {
+    const adj = new Date(d.getTime());
+    if (adj.getHours() < rolloverHour) {
+      adj.setDate(adj.getDate() - 1);
+    }
+    return adj.toISOString().split("T")[0];
+  };
 
   // Progressive render scroll chunk loader for tasks checklist
   const [visibleCount, setVisibleCount] = useState(25);
@@ -286,20 +296,40 @@ export default function App() {
         serverTasks = serverTasks.filter(t => !["task-1", "task-2", "task-3", "task-4"].includes(t.id));
         serverHabits = serverHabits.filter(h => !["habit-1", "habit-2", "habit-3"].includes(h.id));
 
-        // Self-healing streak logic: reset streak to 0 if lastCompletedDate was before yesterday's Habit Day (adjusted for 8 AM reset)
-        const getHabitDay = (d: Date) => {
+        // Fetch settings
+        const settingsRes = await fetch("/api/settings");
+        let serverSettings = {
+          keepYesterdayTasks: true,
+          daysCount: 0,
+          totalCompletedTasks: 0,
+          totalUncompletedTasks: 0,
+          lastRolloverDate: "",
+          rolloverHour: 8
+        };
+        if (settingsRes.ok) {
+          serverSettings = await settingsRes.json();
+          setKeepYesterdayTasks(serverSettings.keepYesterdayTasks);
+          setDaysCount(serverSettings.daysCount);
+          setTotalCompletedTasks(serverSettings.totalCompletedTasks);
+          setTotalUncompletedTasks(serverSettings.totalUncompletedTasks);
+          setLastRolloverDate(serverSettings.lastRolloverDate);
+          setRolloverHour(serverSettings.rolloverHour ?? 8);
+        }
+
+        const currentRolloverHour = serverSettings.rolloverHour ?? 8;
+        const getLocalHabitDay = (d: Date) => {
           const adj = new Date(d.getTime());
-          if (adj.getHours() < 8) {
+          if (adj.getHours() < currentRolloverHour) {
             adj.setDate(adj.getDate() - 1);
           }
           return adj.toISOString().split("T")[0];
         };
 
         const now = new Date();
-        const habitTodayStr = getHabitDay(now);
+        const habitTodayStr = getLocalHabitDay(now);
 
         const yesterday = new Date(now.getTime());
-        if (yesterday.getHours() < 8) {
+        if (yesterday.getHours() < currentRolloverHour) {
           yesterday.setDate(yesterday.getDate() - 1);
         }
         yesterday.setDate(yesterday.getDate() - 1);
@@ -317,24 +347,6 @@ export default function App() {
           return { ...h, streak: currentStreak };
         });
 
-        // Fetch settings
-        const settingsRes = await fetch("/api/settings");
-        let serverSettings = {
-          keepYesterdayTasks: true,
-          daysCount: 0,
-          totalCompletedTasks: 0,
-          totalUncompletedTasks: 0,
-          lastRolloverDate: ""
-        };
-        if (settingsRes.ok) {
-          serverSettings = await settingsRes.json();
-          setKeepYesterdayTasks(serverSettings.keepYesterdayTasks);
-          setDaysCount(serverSettings.daysCount);
-          setTotalCompletedTasks(serverSettings.totalCompletedTasks);
-          setTotalUncompletedTasks(serverSettings.totalUncompletedTasks);
-          setLastRolloverDate(serverSettings.lastRolloverDate);
-        }
-
         const currentHabitDay = habitTodayStr;
 
         if (!serverSettings.lastRolloverDate) {
@@ -349,7 +361,7 @@ export default function App() {
             body: JSON.stringify({ settings: initSettings })
           });
           setLastRolloverDate(currentHabitDay);
-        } else if (serverSettings.lastRolloverDate !== currentHabitDay) {
+        } else if (currentHabitDay > serverSettings.lastRolloverDate) {
           // A rollover is triggered!
           // 1. Record completed vs uncompleted for today's tasks
           const todayCompleted = serverTasks.filter(t => t.period === 'today' && t.completed).length;
@@ -751,19 +763,11 @@ export default function App() {
   };
 
   const handleToggleHabitCompleted = (id: string) => {
-    const getHabitDay = (d: Date) => {
-      const adj = new Date(d.getTime());
-      if (adj.getHours() < 8) {
-        adj.setDate(adj.getDate() - 1);
-      }
-      return adj.toISOString().split("T")[0];
-    };
-
     const now = new Date();
     const habitTodayStr = getHabitDay(now);
 
     const yesterday = new Date(now.getTime());
-    if (yesterday.getHours() < 8) {
+    if (yesterday.getHours() < rolloverHour) {
       yesterday.setDate(yesterday.getDate() - 1);
     }
     yesterday.setDate(yesterday.getDate() - 1);
@@ -773,15 +777,20 @@ export default function App() {
       prev.map((h) => {
         if (h.id === id) {
           const isCompleted = h.lastCompletedDate === habitTodayStr;
-          let nextDate = "";
+          let nextDate = h.lastCompletedDate || "";
           let nextStreak = h.streak ?? 0;
 
           if (isCompleted) {
-            // Unchecking
-            nextDate = "";
-            nextStreak = Math.max(0, nextStreak - 1);
+            // Unchecking today's completion
+            if (nextStreak > 1) {
+              nextDate = habitYesterdayStr;
+              nextStreak = nextStreak - 1;
+            } else {
+              nextDate = "";
+              nextStreak = 0;
+            }
           } else {
-            // Checking
+            // Checking off today's completion
             nextDate = habitTodayStr;
             if (h.lastCompletedDate === habitYesterdayStr) {
               nextStreak = nextStreak + 1;
@@ -850,6 +859,71 @@ export default function App() {
         cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 150);
+  };
+
+  const handleForceRollover = async () => {
+    // 1. Record completed vs uncompleted for today's tasks
+    const todayCompleted = tasks.filter(t => t.period === 'today' && t.completed).length;
+    const todayUncompleted = tasks.filter(t => t.period === 'today' && !t.completed).length;
+
+    const newDaysCount = daysCount + 1;
+    const newTotalCompleted = totalCompletedTasks + todayCompleted;
+    const newTotalUncompleted = totalUncompletedTasks + todayUncompleted;
+    const todayStr = getHabitDay(new Date());
+
+    setDaysCount(newDaysCount);
+    setTotalCompletedTasks(newTotalCompleted);
+    setTotalUncompletedTasks(newTotalUncompleted);
+    setLastRolloverDate(todayStr);
+
+    // 2. Shift tasks:
+    let updatedTasks = [...tasks];
+    if (!keepYesterdayTasks) {
+      updatedTasks = updatedTasks.filter(t => t.period !== 'yesterday');
+    }
+    updatedTasks = updatedTasks.map(t => {
+      if (t.period === 'today' || t.period === 'overflow') {
+        return { ...t, period: 'yesterday' };
+      } else if (t.period === 'tomorrow') {
+        return { ...t, period: 'today' };
+      }
+      return t;
+    });
+
+    setTasks(updatedTasks);
+
+    // 3. Sync to server
+    try {
+      await fetch("/api/tasks/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks: updatedTasks })
+      });
+
+      await fetch("/api/settings/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            keepYesterdayTasks,
+            daysCount: newDaysCount,
+            totalCompletedTasks: newTotalCompleted,
+            totalUncompletedTasks: newTotalUncompleted,
+            lastRolloverDate: todayStr,
+            rolloverHour
+          }
+        })
+      });
+
+      triggerNotification(
+        "Rollover Executed",
+        "Manual daily rollover executed successfully! Tomorrow's tasks are now today.",
+        "success"
+      );
+    } catch (err) {
+      console.error("Force rollover sync error:", err);
+      triggerNotification("Rollover Sync Failed", "Shifts occurred locally but could not save online.", "alert");
+    }
   };
 
   const handleJamInToday = (taskId: string) => {
@@ -1463,7 +1537,7 @@ export default function App() {
       <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] rounded-full bg-nature-300/20 blur-[130px] pointer-events-none" />
 
       {/* Header Bar */}
-      <header className="border-b border-nature-200 dark:border-nature-800 bg-white/90 dark:bg-nature-900/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between shadow-xs transition-colors duration-300">
+      <header className="border-b border-nature-200 dark:border-nature-800 bg-white/70 dark:bg-nature-900/70 backdrop-blur-lg sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between shadow-xs transition-colors duration-300">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-sage-600 flex items-center justify-center shadow-md shadow-sage-600/15 shrink-0">
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -2407,8 +2481,8 @@ export default function App() {
                     : "text-nature-600 hover:text-nature-900 dark:text-nature-400 hover:bg-nature-100 dark:hover:bg-nature-800"
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>Scorecard</span>
+                <Settings className="w-3.5 h-3.5" />
+                <span>Preferences</span>
               </button>
             </div>
 
@@ -2590,13 +2664,6 @@ export default function App() {
                     </div>
                   ) : (
                     habits.map((habit) => {
-                      const getHabitDay = (d: Date) => {
-                        const adj = new Date(d.getTime());
-                        if (adj.getHours() < 8) {
-                          adj.setDate(adj.getDate() - 1);
-                        }
-                        return adj.toISOString().split("T")[0];
-                      };
                       const habitTodayStr = getHabitDay(new Date());
                       const isCompleted = habit.lastCompletedDate === habitTodayStr;
                       return (
@@ -2701,39 +2768,10 @@ export default function App() {
               <div className="flex-1 lg:overflow-y-auto overflow-visible p-4 space-y-4 lg:max-h-[calc(100vh-200px)] text-left">
                 <div className="flex items-center justify-between border-b border-nature-150 dark:border-nature-850 pb-2">
                   <h4 className="text-sm font-bold text-nature-800 dark:text-nature-200">
-                    Productivity Scorecard
+                    Preferences & Productivity
                   </h4>
                 </div>
-
-                {/* Archiving Toggle Card */}
-                <div className="bg-nature-50/50 dark:bg-nature-950/40 border border-nature-200 dark:border-nature-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <span className="text-xs font-bold text-nature-850 dark:text-nature-150 block font-sans">
-                        Yesterday Archiving
-                      </span>
-                      <span className="text-[10px] text-nature-500 dark:text-nature-450 leading-relaxed block max-w-[280px]">
-                        {keepYesterdayTasks
-                          ? "Tasks remain accumulated in the Yesterday view history column on daily rollover."
-                          : "Tasks are permanently deleted from database when they go past Yesterday."}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setKeepYesterdayTasks(!keepYesterdayTasks)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        keepYesterdayTasks ? 'bg-sage-600' : 'bg-nature-250 dark:bg-nature-850'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          keepYesterdayTasks ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Score Stats Card */}
+                {/* 1. Score Stats Card */}
                 {(() => {
                   const score = (totalCompletedTasks + totalUncompletedTasks) > 0
                     ? Math.round((totalCompletedTasks / (totalCompletedTasks + totalUncompletedTasks)) * 100)
@@ -2741,7 +2779,7 @@ export default function App() {
 
                   return (
                     <div className="bg-white dark:bg-nature-900 border border-nature-200 dark:border-nature-800 p-4 rounded-xl space-y-4">
-                      <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-sage-600 dark:text-sage-450">
+                      <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-sage-600 dark:text-sage-455">
                         Productivity Stats
                       </h5>
                       <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -2792,11 +2830,11 @@ export default function App() {
                           </div>
                           <div className="flex justify-between text-xs font-mono">
                             <span className="text-nature-450 dark:text-nature-500">Completed Tasks:</span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-450">{totalCompletedTasks}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-455">{totalCompletedTasks}</span>
                           </div>
                           <div className="flex justify-between text-xs font-mono">
                             <span className="text-nature-450 dark:text-nature-500">Uncompleted Tasks:</span>
-                            <span className="font-bold text-rose-600 dark:text-rose-450">{totalUncompletedTasks}</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-455">{totalUncompletedTasks}</span>
                           </div>
                         </div>
                       </div>
@@ -2813,18 +2851,117 @@ export default function App() {
                   );
                 })()}
 
-                {/* Separate Yesterday Task Tray Bulk Deletion Card */}
+                {/* 2. Yesterday Archiving Toggle Card */}
+                <div className="bg-nature-50/50 dark:bg-nature-950/40 border border-nature-200 dark:border-nature-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold text-nature-850 dark:text-nature-150 block font-sans">
+                        Yesterday Archiving
+                      </span>
+                      <span className="text-[10px] text-nature-500 dark:text-nature-450 leading-relaxed block max-w-[280px]">
+                        {keepYesterdayTasks
+                          ? "Tasks remain accumulated in the Yesterday view history column on daily rollover."
+                          : "Tasks are permanently deleted from database when they go past Yesterday."}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setKeepYesterdayTasks(!keepYesterdayTasks)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        keepYesterdayTasks ? 'bg-sage-600' : 'bg-nature-250 dark:bg-nature-850'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          keepYesterdayTasks ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Daily Rollover Management Card */}
+                <div className="bg-white dark:bg-nature-900 border border-nature-200 dark:border-nature-800 p-4 rounded-xl space-y-3.5 text-left shadow-sm">
+                  <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-sage-600 dark:text-sage-455 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-sage-500" />
+                    Daily Rollover Settings
+                  </h5>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-nature-700 dark:text-nature-350 block">
+                      Wake Up / Rollover Boundary
+                    </label>
+                    <select
+                      value={rolloverHour}
+                      onChange={(e) => setRolloverHour(Number(e.target.value))}
+                      className="w-full p-2 rounded-xl border border-nature-250 dark:border-nature-800 bg-nature-50/50 dark:bg-nature-950 font-mono text-xs text-nature-800 dark:text-nature-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-sage-500/50"
+                    >
+                      {Array.from({ length: 24 }).map((_, h) => {
+                        const ampm = h >= 12 ? "PM" : "AM";
+                        const displayHour = h % 12 === 0 ? 12 : h % 12;
+                        return (
+                          <option key={h} value={h}>
+                            {displayHour}:00 {ampm} {h === 8 ? "(Default)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="text-[10px] text-nature-450 leading-relaxed">
+                      Zen Flow transitions periods (Today ➔ Yesterday, Tomorrow ➔ Today) once local time crosses this hour boundary.
+                    </p>
+                  </div>
+
+                  <div className="border-t border-nature-100 dark:border-nature-800 pt-3 space-y-2">
+                    <label className="text-[11px] font-bold text-rose-600 dark:text-rose-455 block uppercase font-mono tracking-wider">
+                      Force Immediate Rollover
+                    </label>
+                    
+                    {!showForceRolloverWarning ? (
+                      <button
+                        onClick={() => setShowForceRolloverWarning(true)}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-900 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-700 dark:text-amber-455 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Execute Manual Rollover...
+                      </button>
+                    ) : (
+                      <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-3 space-y-2.5">
+                        <p className="text-[10px] text-rose-700 dark:text-rose-350 leading-relaxed font-semibold">
+                          ⚠️ WARNING: This will force tomorrow's tasks onto today, archive today's tasks to yesterday, and increment stats counts regardless of current time. This action is irreversible.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              handleForceRollover();
+                              setShowForceRolloverWarning(false);
+                            }}
+                            className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg cursor-pointer transition-colors"
+                          >
+                            Yes, Execute
+                          </button>
+                          <button
+                            onClick={() => setShowForceRolloverWarning(false)}
+                            className="flex-1 py-1.5 bg-nature-100 dark:bg-nature-800 hover:bg-nature-200 text-nature-700 dark:text-nature-200 border border-nature-250 dark:border-nature-700 font-bold text-[11px] rounded-lg cursor-pointer transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Separate Yesterday Task Tray Bulk Deletion Card */}
                 <div className="bg-white dark:bg-nature-900 border border-rose-200/85 dark:border-rose-900/40 p-4 rounded-xl space-y-3 text-left shadow-sm">
                   <h5 className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-650 dark:text-rose-455 flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-rose-500" />
                     Delete Yesterday's task tray
                   </h5>
-                  <p className="text-[10px] text-nature-500 dark:text-nature-450 leading-relaxed">
+                  <p className="text-[10px] text-nature-500 dark:text-nature-455 leading-relaxed">
                     Once clicked, this action permanently deletes all history and items stored in the Yesterday tray.
                   </p>
                   <button
                     onClick={handleDeleteYesterdayTasks}
-                    className="w-full py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-450 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   >
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
                     Delete Yesterday's task tray
@@ -2897,7 +3034,7 @@ export default function App() {
                 setActiveMobileTab("input");
                 setIsAddingTask(true);
               }}
-              className="h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
+              className="h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer bg-white/70 dark:bg-nature-900/70 backdrop-blur-lg border-nature-200/80 dark:border-nature-800/80 text-nature-700 dark:text-nature-200"
               title="Open AI Parser / Add Tab"
             >
               <Plus className="w-4 h-4 shrink-0" />
@@ -2911,7 +3048,7 @@ export default function App() {
             className={`h-12 px-4 rounded-full flex items-center justify-center gap-1.5 border shadow-xl transition-all active:scale-95 cursor-pointer relative ${
               showQuotaPopover
                 ? "bg-sage-600 border-sage-500 text-white"
-                : "bg-white/95 dark:bg-nature-900/95 border-nature-200 dark:border-nature-800 text-nature-700 dark:text-nature-200"
+                : "bg-white/70 dark:bg-nature-900/70 backdrop-blur-lg border-nature-200/80 dark:border-nature-800/80 text-nature-700 dark:text-nature-200"
             }`}
             title="Toggle AI Studio Quota"
           >
@@ -3121,7 +3258,7 @@ export default function App() {
 
         {/* Mobile Floating Bottom Navigation */}
         <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50 flex justify-center">
-          <div className="w-full max-w-md bg-white/80 dark:bg-nature-900/80 backdrop-blur-lg border border-nature-200/80 dark:border-nature-800/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
+          <div className="w-full max-w-md bg-white/60 dark:bg-nature-900/60 backdrop-blur-xl border border-nature-200/60 dark:border-nature-800/60 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] rounded-2xl px-3 py-2 flex items-center justify-between gap-1">
             {/* Dump / Input Tab */}
             <button
               onClick={() => {
@@ -3189,7 +3326,7 @@ export default function App() {
               <span className="text-[10px] font-mono tracking-tight">Habits</span>
             </button>
 
-            {/* Scorecard Tab */}
+            {/* Preferences Tab */}
             <button
               onClick={() => {
                 safeVibrate(10);
@@ -3202,8 +3339,8 @@ export default function App() {
                   : "text-nature-500 dark:text-nature-400 hover:text-nature-700 dark:hover:text-nature-350"
               }`}
             >
-              <TrendingUp className="w-5 h-5" />
-              <span className="text-[10px] font-mono tracking-tight">Stats</span>
+              <Settings className="w-5 h-5" />
+              <span className="text-[10px] font-mono tracking-tight">Prefs</span>
             </button>
           </div>
         </div>
