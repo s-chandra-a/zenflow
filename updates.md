@@ -143,6 +143,19 @@ Welcome to the comprehensive update log of **Zenflow**. This document details al
 - **Habit Streak Restoration Safeguard**: Fixed a critical bug in the habits streak calculator where checking, unchecking, and re-checking a habit multiple times on the same day would reset the long-term streak to 1. Integrated a self-healing lastCompletedDate rollback mechanism: unchecking today's completed habit now rolls the `lastCompletedDate` back to `habitYesterdayStr` (if the streak was > 1) and decrements the streak count by 1 instead of setting the date to blank. When checked again on the same day, the engine correctly identifies the yesterday continuation, incrementing the streak back to its original value rather than resetting it to 1.
 - **Collapsed-by-Default Agenda Timeline**: Swapped the timeline's initialization state check from checking for equality (`=== "true"`) to checking for inequality (`!== "false"`). First-time users or those opening the app with a cleared local storage cache will now default to the clean, compact collapsed view (hiding empty hours), keeping the layout tidy.
 
+---
+
+## 🎨 15. UI Theme Selection & AI Scheduler Upgrades
+- **Custom Theme Selector Dropdown**: Replaced the native browser HTML `<select>` dropdown in the header with a custom animated React component using `framer-motion` for transitions.
+- **Colored Icons for Themes**: Swapped plain emojis for beautiful, theme-matching colored icons from `lucide-react`:
+  - **Forest Moss**: `TreePine` (emerald green)
+  - **Nordic Frost**: `Snowflake` (sky blue)
+  - **Crimson Sand**: `Flame` (rose red)
+  - **Royal Orchid**: `Crown` (purple)
+- **Responsive Theme Button**: Engineered the selector button to collapse into a centered 36px icon button on mobile screens and expand into an icon-and-text dropdown on desktop. Includes a click-outside detection hook.
+- **AI Scheduler Loading Indicator**: Added a spinning `Loader2` icon and changed the text to "Generating..." (while disabling click triggers) on the scheduler's "Generate AI Schedule" button when prioritized scheduling is in progress.
+- **Dynamic Task Grouping & Retiming**: Enhanced the backend AI Scheduler prompt in `server.ts` with generalized guidelines to match tasks semantically by keyword, category, or title placeholders (e.g., "all [X] related tasks"). Enabled scheduling entire matched groups within specific time slots or freezing them with `"timeFrozen": true` while preserving task integrity (no editing task details or deleting any tasks).
+
 
 
 

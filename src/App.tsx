@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, Upload, Calendar, List, Sparkles, Plus, Clock, 
   Settings, CheckCircle, CheckCircle2, ChevronRight, Play, Loader2, AlertCircle, X,
-  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy, AlertTriangle, RefreshCw
+  Trash2, Edit3, Volume2, Bell, TrendingUp, History, Sun, Moon, Mic, MicOff, Palette, Flame, Trophy, AlertTriangle, RefreshCw,
+  Check, ChevronDown, TreePine, Snowflake, Crown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Task, InAppNotification, Habit } from "./types";
@@ -11,6 +12,13 @@ import CalendarAgenda from "./components/CalendarAgenda";
 import FocusWorkflowPanel from "./components/FocusWorkflowPanel";
 import NotificationCenter from "./components/NotificationCenter";
 import { safeVibrate } from "./utils/haptics";
+
+const THEME_OPTIONS = [
+  { id: "forest", name: "Forest Moss", icon: TreePine, iconColorClass: "text-emerald-600 dark:text-emerald-400" },
+  { id: "nordic", name: "Nordic Frost", icon: Snowflake, iconColorClass: "text-sky-500 dark:text-sky-400" },
+  { id: "crimson", name: "Crimson Sand", icon: Flame, iconColorClass: "text-rose-500 dark:text-rose-400" },
+  { id: "orchid", name: "Royal Orchid", icon: Crown, iconColorClass: "text-purple-500 dark:text-purple-400" }
+];
 
 // Polished starter tasks to ensure immediate visual excellence
 const INITIAL_TASKS: Task[] = [];
@@ -553,6 +561,21 @@ export default function App() {
     document.documentElement.classList.remove('theme-forest', 'theme-nordic', 'theme-crimson', 'theme-orchid');
     document.documentElement.classList.add(`theme-${themeOption}`);
   }, [themeOption]);
+
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const themeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
+        setShowThemeDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Voice Dictation (Speech to Text) State
   const [isListening, setIsListening] = useState(false);
@@ -1572,29 +1595,79 @@ export default function App() {
           />
 
           {/* Custom Theme Selector Dropdown */}
-          <div className="relative max-w-[44px] sm:max-w-none">
-            <select
-              value={themeOption}
-              onChange={(e) => setThemeOption(e.target.value as any)}
-              className={`p-2 pr-2 sm:pr-8 pl-8 sm:pl-9 rounded-xl border appearance-none font-mono text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-sage-500/50 w-11 sm:w-auto text-transparent sm:text-inherit overflow-hidden ${
+          <div className="relative" ref={themeDropdownRef}>
+            <button
+              onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+              className={`rounded-xl border font-mono text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-sage-500/50 flex items-center justify-center sm:justify-start w-9 h-9 sm:w-auto sm:h-auto sm:p-2 sm:pl-8 sm:pr-3 relative select-none ${
                 isDarkMode
                   ? "bg-nature-850 border-nature-750 text-nature-150 hover:bg-nature-800"
                   : "bg-nature-50 border-nature-250 text-nature-800 hover:bg-nature-100"
               }`}
               title="Select UI Theme Scheme"
             >
-              <option value="forest">🌲 Forest Moss</option>
-              <option value="nordic">❄️ Nordic Frost</option>
-              <option value="crimson">🌶️ Crimson Sand</option>
-              <option value="orchid">🌸 Royal Orchid</option>
-            </select>
-            <div className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <Palette className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400" />
+              <span className="hidden sm:inline-flex items-center gap-1.5 mr-1.5">
+                {themeOption === "forest" && "Forest Moss"}
+                {themeOption === "nordic" && "Nordic Frost"}
+                {themeOption === "crimson" && "Crimson Sand"}
+                {themeOption === "orchid" && "Royal Orchid"}
+              </span>
+              <ChevronDown className="w-3 h-3 text-nature-450 dark:text-nature-400 hidden sm:block shrink-0" />
+            </button>
+
+            {/* Icon indicating active theme (or Palette) */}
+            <div className="absolute left-1/2 -translate-x-1/2 sm:left-3 sm:translate-x-0 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
+              {themeOption === "forest" && <TreePine className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+              {themeOption === "nordic" && <Snowflake className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />}
+              {themeOption === "crimson" && <Flame className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />}
+              {themeOption === "orchid" && <Crown className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />}
             </div>
-            {/* Custom arrow down */}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-nature-400 dark:text-nature-500 text-[9px] hidden sm:block">
-              ▼
-            </div>
+
+            <AnimatePresence>
+              {showThemeDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  transition={{ duration: 0.1 }}
+                  className={`absolute right-0 mt-1.5 w-44 sm:w-48 rounded-xl border shadow-xl py-1 z-50 overflow-hidden ${
+                    isDarkMode
+                      ? "bg-nature-900 border-nature-800 text-nature-150"
+                      : "bg-white border-nature-250 text-nature-800"
+                  }`}
+                >
+                  {THEME_OPTIONS.map((option) => {
+                    const ThemeIcon = option.icon;
+                    const isSelected = themeOption === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          setThemeOption(option.id as any);
+                          setShowThemeDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-[11px] font-bold font-mono transition-colors flex items-center justify-between cursor-pointer select-none ${
+                          isDarkMode
+                            ? isSelected
+                              ? "bg-nature-850 text-white"
+                              : "hover:bg-nature-850/60 text-nature-350 hover:text-white"
+                            : isSelected
+                              ? "bg-nature-100 text-nature-950"
+                              : "hover:bg-nature-50 text-nature-600 hover:text-nature-950"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <ThemeIcon className={`w-3.5 h-3.5 ${option.iconColorClass} shrink-0`} />
+                          <span>{option.name}</span>
+                        </span>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Theme Toggle Button */}
@@ -2165,10 +2238,17 @@ export default function App() {
                         {/* Trigger button */}
                         <button
                           onClick={handleAISchedule}
-                          className="w-full py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          disabled={isPrioritizing}
+                          className={`w-full py-2 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            isPrioritizing ? "bg-sage-400 cursor-wait" : "bg-sage-600 hover:bg-sage-700"
+                          }`}
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Generate AI Schedule</span>
+                          {isPrioritizing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isPrioritizing ? "Generating..." : "Generate AI Schedule"}</span>
                         </button>
                       </motion.div>
                     )}

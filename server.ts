@@ -528,12 +528,27 @@ ${overflowGuideline}
 5. TIME-FROZEN TASKS (CRITICAL CONSTRAINT):
    - Any input task marked with "timeFrozen": true MUST remain scheduled at its pre-existing "scheduledTime" (HH:MM). You MUST NOT shift its start time or duration or modify its period.
    - In addition to habits, you MUST NOT schedule any tasks that overlap with the Completed/Locked Tasks listed above. You MUST schedule all other tasks *around* these times to avoid timeline overlaps.
+6. USER PREFERENCES & TASK RETIMING/FREEZING (CRITICAL):
+   - You MUST analyze the "User custom context" above for specific scheduling preferences, constraints, retimings, or locking requests:
+     a) Task Identification & Matching:
+        - Identify individual tasks by name/title (e.g. "task-1", "Task-2"). Use case-insensitive and partial title matches.
+        - Semantic Group/Category Matching: Identify groups of tasks referred to collectively by topic, category, class type, tag, or semantic synonyms (e.g. "all [X] related tasks", "all [Y] classes", or "all [Z] tasks").
+        - Match these groups dynamically by checking task categories, or scanning titles and descriptions for words and synonyms related to the user's mentioned topic or theme.
+     b) Freezing Tasks & Groups:
+        - If the user requests to freeze or lock a task or a group of tasks (e.g. "Freeze [Task Name] at [Time]", "Freeze all [Topic] tasks"), schedule those tasks at the exact requested times (converting 12-hour values like 7pm or 5pm to 24-hour HH:MM format e.g. "19:00" or "17:00") and set "timeFrozen": true in the output.
+     c) Time Spans / Ranges:
+        - If the user states a task or group runs from a start to end time (e.g. "[Task Name] is from [Time A] to [Time B]"), schedule them at the start of that window, set "timeFrozen": true, and ensure other tasks do not overlap with this time window.
+     d) Retiming Categories/Groups:
+        - If the user requests to retime all tasks of a group (e.g. "Retime all [Topic] tasks between [Time A] to [Time B]"), identify ALL matching tasks using the Semantic Group Matching logic above and schedule them inside that specified time slot, adjusting start times to respect task durations without overlapping. Set "timeFrozen": true for all of them to lock them at these new positions.
+7. INTEGRITY & NO DELETIONS/EDITS (CRITICAL RULE):
+   - You MUST NOT create new tasks, and you MUST NOT delete or omit any of the input tasks. Every task in the "Input Tasks to schedule" list must be returned in the "scheduledTasks" array with its original "id".
+   - You MUST NOT edit or modify the core properties of the tasks (such as title, description, category, or duration). You are ONLY allowed to assign/update "scheduledTime", "priority", "period", and "timeFrozen".
 
 Return a JSON object containing a "scheduledTasks" array and an empty "newBreaks" array.
 Return ONLY a valid JSON object matching this structure:
 {
   "scheduledTasks": [
-    { "id": "...", "scheduledTime": "HH:MM|null", "priority": "high|medium|low", "period": "${period === 'tomorrow' ? 'tomorrow' : 'today|overflow'}" },
+    { "id": "...", "scheduledTime": "HH:MM|null", "priority": "high|medium|low", "period": "${period === 'tomorrow' ? 'tomorrow' : 'today|overflow'}", "timeFrozen": true|false },
     ...
   ],
   "newBreaks": []
